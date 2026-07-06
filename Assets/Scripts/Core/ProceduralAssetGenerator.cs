@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
+using UnityEngine.EventSystems;
 using Kiosk.Products;
 
 namespace Kiosk.Core
@@ -43,22 +44,22 @@ namespace Kiosk.Core
             switch (name)
             {
                 case "Material_Boden":
-                    mat.mainTexture = CheckerTexture(new Color(0.55f, 0.52f, 0.48f), new Color(0.45f, 0.43f, 0.40f), 8);
+                    mat.mainTexture = CheckerTexture(new Color(0.44f, 0.39f, 0.34f), new Color(0.33f, 0.3f, 0.27f), 10);
                     break;
                 case "Material_Wand":
-                    mat.mainTexture = NoiseTexture(new Color(0.85f, 0.83f, 0.76f), 0.05f);
+                    mat.mainTexture = NoiseTexture(new Color(0.88f, 0.85f, 0.76f), 0.035f);
                     break;
                 case "Material_Decke":
-                    mat.color = new Color(0.92f, 0.92f, 0.9f);
+                    mat.color = new Color(0.96f, 0.95f, 0.92f);
                     break;
                 case "Material_Regal":
-                    mat.mainTexture = NoiseTexture(new Color(0.55f, 0.38f, 0.22f), 0.08f);
+                    mat.mainTexture = NoiseTexture(new Color(0.56f, 0.36f, 0.2f), 0.05f);
                     break;
                 case "Material_Kasse":
-                    mat.color = new Color(0.25f, 0.27f, 0.3f);
+                    mat.color = new Color(0.18f, 0.22f, 0.28f);
                     break;
                 case "Material_Kuehlschrank":
-                    mat.color = new Color(0.75f, 0.85f, 0.9f);
+                    mat.mainTexture = StripeTexture(new Color(0.76f, 0.88f, 0.95f), new Color(0.62f, 0.78f, 0.9f));
                     mat.SetFloat("_Glossiness", 0.7f);
                     break;
                 case "Material_Produkt_Getraenk":
@@ -74,16 +75,16 @@ namespace Kiosk.Core
                     mat.mainTexture = StripeTexture(new Color(0.5f, 0.2f, 0.15f), new Color(0.8f, 0.7f, 0.5f));
                     break;
                 case "Material_Paket":
-                    mat.mainTexture = NoiseTexture(new Color(0.72f, 0.55f, 0.35f), 0.1f);
+                    mat.mainTexture = NoiseTexture(new Color(0.76f, 0.59f, 0.35f), 0.08f);
                     break;
                 case "Material_LottoTerminal":
-                    mat.color = new Color(0.9f, 0.75f, 0.1f);
+                    mat.color = new Color(0.92f, 0.76f, 0.12f);
                     break;
                 case "Material_Kunde":
-                    mat.color = new Color(Random.Range(0.3f, 0.9f), Random.Range(0.3f, 0.9f), Random.Range(0.3f, 0.9f));
+                    mat.color = new Color(Random.Range(0.35f, 0.9f), Random.Range(0.35f, 0.9f), Random.Range(0.35f, 0.9f));
                     break;
                 case "Material_Theke":
-                    mat.mainTexture = NoiseTexture(new Color(0.4f, 0.28f, 0.18f), 0.08f);
+                    mat.mainTexture = NoiseTexture(new Color(0.38f, 0.25f, 0.16f), 0.05f);
                     break;
                 default:
                     mat.color = Color.magenta;
@@ -281,7 +282,9 @@ namespace Kiosk.Core
             rt.anchorMax = anchorMax;
             rt.offsetMin = Vector2.zero;
             rt.offsetMax = Vector2.zero;
-            go.GetComponent<Image>().color = color;
+            var image = go.GetComponent<Image>();
+            image.color = color;
+            image.raycastTarget = false;
             return go;
         }
 
@@ -300,6 +303,7 @@ namespace Kiosk.Core
             text.fontSize = size;
             text.color = Color.white;
             text.alignment = anchor;
+            text.raycastTarget = false;
             return text;
         }
 
@@ -309,6 +313,14 @@ namespace Kiosk.Core
             go.transform.SetParent(parent, false);
             go.GetComponent<Image>().color = new Color(0.22f, 0.35f, 0.55f, 0.95f);
             var button = go.GetComponent<Button>();
+            var colors = button.colors;
+            colors.normalColor = Color.white;
+            colors.highlightedColor = new Color(1f, 1f, 1f, 0.96f);
+            colors.pressedColor = new Color(0.9f, 0.95f, 1f, 0.92f);
+            colors.selectedColor = colors.highlightedColor;
+            colors.disabledColor = new Color(1f, 1f, 1f, 0.55f);
+            colors.fadeDuration = 0.08f;
+            button.colors = colors;
             if (onClick != null)
                 button.onClick.AddListener(() =>
                 {
@@ -317,7 +329,81 @@ namespace Kiosk.Core
                 });
             var text = CreateText(go.transform, "Label", label, 16, TextAnchor.MiddleCenter);
             text.color = Color.white;
+            go.AddComponent<ButtonAnimator>();
             return button;
+        }
+
+        public static EventSystem EnsureEventSystem()
+        {
+            EventSystem primary = null;
+            foreach (var eventSystem in Object.FindObjectsOfType<EventSystem>())
+            {
+                if (eventSystem == null) continue;
+                if (primary == null)
+                {
+                    primary = eventSystem;
+                    if (primary.transform.parent != null)
+                        primary.transform.SetParent(null, false);
+                    if (primary.GetComponent<StandaloneInputModule>() == null)
+                        primary.gameObject.AddComponent<StandaloneInputModule>();
+                }
+                else
+                {
+                    Object.Destroy(eventSystem.gameObject);
+                }
+            }
+
+            if (primary != null) return primary;
+            return new GameObject("EventSystem", typeof(EventSystem), typeof(StandaloneInputModule)).GetComponent<EventSystem>();
+        }
+    }
+
+    public class ButtonAnimator : MonoBehaviour, IPointerEnterHandler, IPointerExitHandler, IPointerDownHandler, IPointerUpHandler
+    {
+        Vector3 _baseScale = Vector3.one;
+        Image _image;
+        Color _baseColor;
+        bool _hovered;
+
+        void Awake()
+        {
+            _baseScale = transform.localScale;
+            _image = GetComponent<Image>();
+            if (_image != null) _baseColor = _image.color;
+        }
+
+        void OnEnable()
+        {
+            _hovered = false;
+            transform.localScale = _baseScale;
+            if (_image != null) _image.color = _baseColor;
+        }
+
+        void Update()
+        {
+            var targetScale = _hovered ? _baseScale * 1.04f : _baseScale;
+            transform.localScale = Vector3.Lerp(transform.localScale, targetScale, Time.unscaledDeltaTime * 14f);
+            if (_image != null)
+            {
+                var targetColor = _hovered ? _baseColor * 1.1f : _baseColor;
+                targetColor.a = _baseColor.a;
+                _image.color = Color.Lerp(_image.color, targetColor, Time.unscaledDeltaTime * 14f);
+            }
+        }
+
+        public void OnPointerEnter(PointerEventData eventData) { _hovered = true; }
+        public void OnPointerExit(PointerEventData eventData) { _hovered = false; }
+
+        public void OnPointerDown(PointerEventData eventData)
+        {
+            transform.localScale = _baseScale * 0.96f;
+            if (_image != null) _image.color = _baseColor * 0.9f;
+        }
+
+        public void OnPointerUp(PointerEventData eventData)
+        {
+            transform.localScale = _hovered ? _baseScale * 1.04f : _baseScale;
+            if (_image != null) _image.color = _hovered ? _baseColor * 1.1f : _baseColor;
         }
     }
 }

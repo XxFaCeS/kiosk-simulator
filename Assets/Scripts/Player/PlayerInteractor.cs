@@ -1,3 +1,4 @@
+using System;
 using UnityEngine;
 using Kiosk.Interaction;
 
@@ -12,10 +13,12 @@ namespace Kiosk.Player
         public Camera PlayerCamera;
 
         Interactable _current;
+        CharacterController _characterController;
 
         void Awake()
         {
             if (PlayerCamera == null) PlayerCamera = GetComponentInChildren<Camera>();
+            _characterController = GetComponent<CharacterController>();
         }
 
         void Update()
@@ -45,7 +48,11 @@ namespace Kiosk.Player
             ScanForInteractable();
 
             if (_current != null && Input.GetKeyDown(KeyCode.E))
+            {
+                var controller = GetComponent<PlayerController>();
+                if (controller != null) controller.PlayInteractNod();
                 _current.Interact(this);
+            }
         }
 
         void ScanForInteractable()
@@ -54,9 +61,16 @@ namespace Kiosk.Player
             if (PlayerCamera != null)
             {
                 Ray ray = new Ray(PlayerCamera.transform.position, PlayerCamera.transform.forward);
-                RaycastHit hit;
-                if (Physics.Raycast(ray, out hit, InteractRange))
+                var hits = Physics.RaycastAll(ray, InteractRange, ~0, QueryTriggerInteraction.Ignore);
+                Array.Sort(hits, (a, b) => a.distance.CompareTo(b.distance));
+                foreach (var hit in hits)
+                {
+                    if (hit.collider == null) continue;
+                    if (_characterController != null && hit.collider == _characterController) continue;
+                    if (hit.collider.transform.IsChildOf(transform)) continue;
                     found = hit.collider.GetComponentInParent<Interactable>();
+                    if (found != null) break;
+                }
             }
             if (found != _current)
             {

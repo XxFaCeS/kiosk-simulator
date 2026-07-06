@@ -18,9 +18,12 @@ namespace Kiosk.Economy
         public float DayExpenses;
         public float DayPenalties;
         public int DayCustomersServed;
+        public float LifetimeRevenue { get; private set; }
+        public int LifetimeCustomersServed { get; private set; }
 
         // Wochenstatistik (letzte 7 Tage Gewinn)
         public float[] WeekProfits = new float[7];
+        bool _dailyGoalBonusApplied;
 
         public event System.Action OnMoneyChanged;
 
@@ -36,6 +39,7 @@ namespace Kiosk.Economy
         {
             Money += amount;
             DayRevenue += amount;
+            LifetimeRevenue += amount;
             Notify();
         }
 
@@ -59,9 +63,56 @@ namespace Kiosk.Economy
 
         void Notify() { if (OnMoneyChanged != null) OnMoneyChanged(); }
 
+        public int DailyCustomerGoal
+        {
+            get
+            {
+                int day = Core.GameManager.Instance != null ? Core.GameManager.Instance.Day : 1;
+                return 2 + Mathf.Max(0, day - 1) * 2;
+            }
+        }
+
+        public float DailyRevenueGoal
+        {
+            get
+            {
+                int day = Core.GameManager.Instance != null ? Core.GameManager.Instance.Day : 1;
+                return 25f + Mathf.Max(0, day - 1) * 18f;
+            }
+        }
+
+        public float DailyGoalBonus
+        {
+            get
+            {
+                int day = Core.GameManager.Instance != null ? Core.GameManager.Instance.Day : 1;
+                return 15f + Mathf.Max(0, day - 1) * 6f;
+            }
+        }
+
+        public bool DailyGoalsMet
+        {
+            get { return DayCustomersServed >= DailyCustomerGoal && DayRevenue >= DailyRevenueGoal; }
+        }
+
+        public void RegisterCustomerServed()
+        {
+            DayCustomersServed++;
+            LifetimeCustomersServed++;
+        }
+
         /// <summary>Fixkosten abziehen und Tagesgewinn berechnen. Gibt den Gewinn zurueck.</summary>
         public float CloseDay()
         {
+            if (DailyGoalsMet)
+            {
+                if (!_dailyGoalBonusApplied)
+                {
+                    Money += DailyGoalBonus;
+                    DayRevenue += DailyGoalBonus;
+                    _dailyGoalBonusApplied = true;
+                }
+            }
             float fixedCosts = RentPerDay + ElectricityPerDay;
             Money -= fixedCosts;
             DayExpenses += fixedCosts;
@@ -78,6 +129,13 @@ namespace Kiosk.Economy
             DayExpenses = 0f;
             DayPenalties = 0f;
             DayCustomersServed = 0;
+            _dailyGoalBonusApplied = false;
+        }
+
+        public void SetLifetimeStats(float revenue, int customers)
+        {
+            LifetimeRevenue = Mathf.Max(0f, revenue);
+            LifetimeCustomersServed = Mathf.Max(0, customers);
         }
 
         public float WeekProfit

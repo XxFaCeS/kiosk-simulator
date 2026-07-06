@@ -53,6 +53,14 @@ namespace Kiosk.Core
             return null;
         }
 
+        public static void ResetRuntimeData()
+        {
+            _products = null;
+            _upgrades = null;
+            _suppliers = null;
+            _lottoTickets = null;
+        }
+
         static void BuildProducts()
         {
             _products = new List<ProductData>();
@@ -143,11 +151,13 @@ namespace Kiosk.Core
             var U = _upgrades;
             U.Add(UpgradeData.Create("regal_stufe2", "Regal Stufe 2", "Mehr Kapazitaet pro Regalslot (+4).", 350f, 1, null, UpgradeEffect.ShelfCapacity, 4f));
             U.Add(UpgradeData.Create("regal_stufe3", "Regal Stufe 3", "Noch mehr Kapazitaet pro Regalslot (+4).", 700f, 3, "regal_stufe2", UpgradeEffect.ShelfCapacity, 4f));
+            U.Add(UpgradeData.Create("regal_stufe4", "Regal Stufe 4", "Premium-Boeden fuer noch mehr Regalplatz (+6).", 1250f, 5, "regal_stufe3", UpgradeEffect.ShelfCapacity, 6f));
             U.Add(UpgradeData.Create("zweites_regal", "Zweites Regal", "Ein zusaetzliches Regal im Laden.", 500f, 2, null, UpgradeEffect.ExtraShelf, 1f));
             U.Add(UpgradeData.Create("kuehlschrank", "Getraenke-Kuehlschrank", "Kunden kaufen mehr Getraenke (+15% Nachfrage).", 600f, 2, null, UpgradeEffect.DrinkDemand, 0.15f));
             U.Add(UpgradeData.Create("premium_kuehlschrank", "Premium-Kuehlschrank", "Weitere +20% Getraenke-Nachfrage.", 1200f, 5, "kuehlschrank", UpgradeEffect.DrinkDemand, 0.20f));
             U.Add(UpgradeData.Create("zweite_kasse", "Zweite Kasse", "Verkuerzt die Warteschlange (Kunden warten geduldiger).", 1500f, 8, null, UpgradeEffect.Patience, 0.30f));
             U.Add(UpgradeData.Create("schnelle_kasse", "Schnellere Kasse", "Scannen geht schneller.", 800f, 3, null, UpgradeEffect.CheckoutSpeed, 0.30f));
+            U.Add(UpgradeData.Create("scanner_profi", "Scanner-Profi", "Noch schnellere Bedienung (-20% Scan-Zeit).", 1350f, 5, "schnelle_kasse", UpgradeEffect.CheckoutSpeed, 0.20f));
             U.Add(UpgradeData.Create("kartenzahlung", "Kartenzahlung", "Kunden koennen mit Karte zahlen (schneller).", 400f, 2, null, UpgradeEffect.CardPayment, 1f));
             U.Add(UpgradeData.Create("self_checkout", "Self-Checkout", "Einige Kunden kassieren sich selbst ab.", 3000f, 10, "kartenzahlung", UpgradeEffect.SelfCheckout, 0.25f));
             U.Add(UpgradeData.Create("lager_gross", "Groesserer Lagerraum", "+50 Lagerkapazitaet.", 900f, 3, null, UpgradeEffect.StorageCapacity, 50f));
@@ -163,9 +173,11 @@ namespace Kiosk.Core
             U.Add(UpgradeData.Create("kaffeemaschine", "Kaffeemaschine", "Kaffee-Nachfrage +30%.", 900f, 4, null, UpgradeEffect.CoffeeDemand, 0.30f));
             U.Add(UpgradeData.Create("aussenwerbung", "Aussenwerbung", "Mehr Kunden (+20% Spawnrate).", 600f, 2, null, UpgradeEffect.CustomerRate, 0.20f));
             U.Add(UpgradeData.Create("schaufensterdeko", "Schaufensterdeko", "Mehr Kunden (+15% Spawnrate) und +3 Ruf.", 450f, 2, null, UpgradeEffect.CustomerRate, 0.15f));
+            U.Add(UpgradeData.Create("kundenmagnet", "Kundenmagnet", "Nachbarschaftswerbung bringt noch mehr Laufkundschaft (+25% Spawnrate).", 1500f, 6, "aussenwerbung", UpgradeEffect.CustomerRate, 0.25f));
             U.Add(UpgradeData.Create("mitarbeiter_kasse", "Mitarbeiter-Kasse", "Ein Mitarbeiter kassiert automatisch langsam ab.", 3500f, 8, null, UpgradeEffect.EmployeeCheckout, 1f));
             U.Add(UpgradeData.Create("auto_regal", "Automatische Regalauffuellung", "Regale fuellen sich langsam automatisch aus dem Lager.", 4000f, 9, null, UpgradeEffect.AutoRestock, 1f));
             U.Add(UpgradeData.Create("lieferantenrabatt", "Lieferantenrabatt", "-15% Einkaufspreise.", 1800f, 6, null, UpgradeEffect.SupplierDiscount, 0.15f));
+            U.Add(UpgradeData.Create("premium_sortiment", "Premium-Sortiment", "Bessere Warenpraesentation erhoeht die Marge um 12%.", 1750f, 6, null, UpgradeEffect.ProductMargin, 0.12f));
         }
 
         static void BuildSuppliers()

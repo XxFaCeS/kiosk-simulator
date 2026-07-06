@@ -2,6 +2,7 @@ using UnityEngine;
 using UnityEngine.UI;
 using Kiosk.Core;
 using Kiosk.Customers;
+using Kiosk.Upgrades;
 
 namespace Kiosk.UI
 {
@@ -129,10 +130,14 @@ namespace Kiosk.UI
         void RefreshShoppingList()
         {
             var register = Checkout.CashRegister.Instance;
+            var upgrades = UpgradeManager.Instance;
             var sb = new System.Text.StringBuilder();
             sb.AppendLine("Gescannt:");
             foreach (var p in register.ScannedItems)
-                sb.AppendLine("  " + p.DisplayName + "  -  " + p.SellPrice.ToString("F2") + " Euro" + (p.AgeRestricted ? "  [18+]" : ""));
+            {
+                float price = upgrades != null ? upgrades.GetAdjustedSellPrice(p) : p.SellPrice;
+                sb.AppendLine("  " + p.DisplayName + "  -  " + price.ToString("F2") + " Euro" + (p.AgeRestricted ? "  [18+]" : ""));
+            }
             if (register.RemainingItems.Count > 0)
             {
                 sb.AppendLine("\nNoch zu scannen: " + register.RemainingItems.Count + " Artikel");
@@ -150,6 +155,7 @@ namespace Kiosk.UI
             {
                 _scanCooldown = register.ScanDuration;
                 RefreshShoppingList();
+                _info.text = "Scan erfolgreich - naechster Artikel bereit.";
             }
         }
 

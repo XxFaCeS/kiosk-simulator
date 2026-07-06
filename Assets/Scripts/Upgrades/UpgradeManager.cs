@@ -101,6 +101,12 @@ namespace Kiosk.Upgrades
             return total;
         }
 
+        public float GetAdjustedSellPrice(Products.ProductData product)
+        {
+            if (product == null) return 0f;
+            return product.SellPrice * (1f + Mathf.Max(0f, GetEffectValue(UpgradeEffect.ProductMargin)));
+        }
+
         public void LoadPurchased(List<string> ids)
         {
             _purchased.Clear();

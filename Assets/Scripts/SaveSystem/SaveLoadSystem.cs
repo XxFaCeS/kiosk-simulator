@@ -29,6 +29,9 @@ namespace Kiosk.SaveSystem
         public List<Packages.PackageItem> StoredPackages = new List<Packages.PackageItem>();
         public List<PriceEntry> Prices = new List<PriceEntry>();
         public float[] WeekProfits = new float[7];
+        public bool TutorialCompleted;
+        public float LifetimeRevenue;
+        public int LifetimeCustomersServed;
     }
 
     /// <summary>
@@ -37,6 +40,7 @@ namespace Kiosk.SaveSystem
     public class SaveLoadSystem : MonoBehaviour
     {
         public static SaveLoadSystem Instance { get; private set; }
+        public bool TutorialCompleted { get; private set; }
 
         public static string SavePath
         {
@@ -59,11 +63,18 @@ namespace Kiosk.SaveSystem
             var gm = Core.GameManager.Instance;
             if (gm != null) { save.Day = gm.Day; save.Level = gm.Level; save.XP = gm.XP; }
             var eco = Economy.EconomyManager.Instance;
-            if (eco != null) { save.Money = eco.Money; save.WeekProfits = eco.WeekProfits; }
+            if (eco != null)
+            {
+                save.Money = eco.Money;
+                save.WeekProfits = eco.WeekProfits;
+                save.LifetimeRevenue = eco.LifetimeRevenue;
+                save.LifetimeCustomersServed = eco.LifetimeCustomersServed;
+            }
             var rep = Economy.ReputationManager.Instance;
             if (rep != null) save.Reputation = rep.Reputation;
             var cycle = Core.DayNightCycle.Instance;
             if (cycle != null) save.TimeOfDay = cycle.TimeOfDay;
+            save.TutorialCompleted = TutorialCompleted;
 
             var inv = Inventory.InventoryManager.Instance;
             if (inv != null)
@@ -111,6 +122,7 @@ namespace Kiosk.SaveSystem
                 eco.SetMoney(save.Money);
                 if (save.WeekProfits != null && save.WeekProfits.Length == 7)
                     save.WeekProfits.CopyTo(eco.WeekProfits, 0);
+                eco.SetLifetimeStats(save.LifetimeRevenue, save.LifetimeCustomersServed);
             }
             var rep = Economy.ReputationManager.Instance;
             if (rep != null) rep.SetReputation(save.Reputation);
@@ -147,8 +159,15 @@ namespace Kiosk.SaveSystem
                     if (p != null && e.SellPrice > 0f) p.SellPrice = e.SellPrice;
                 }
 
+            TutorialCompleted = save.TutorialCompleted;
+
             if (UI.UIManager.Instance != null) UI.UIManager.Instance.ShowToast("Spielstand geladen.");
             return true;
+        }
+
+        public void MarkTutorialCompleted()
+        {
+            TutorialCompleted = true;
         }
     }
 }

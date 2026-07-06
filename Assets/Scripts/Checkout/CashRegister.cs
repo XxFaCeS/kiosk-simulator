@@ -64,7 +64,9 @@ namespace Kiosk.Checkout
             get
             {
                 float t = 0f;
-                foreach (var p in _scanned) t += p.SellPrice;
+                var upgrades = Upgrades.UpgradeManager.Instance;
+                foreach (var p in _scanned)
+                    t += upgrades != null ? upgrades.GetAdjustedSellPrice(p) : p.SellPrice;
                 return t;
             }
         }

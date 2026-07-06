@@ -12,33 +12,53 @@ namespace Kiosk.Customers
         /// <summary>Waehlt 1-3 gewuenschte Produkte aus den freigeschalteten Produkten.</summary>
         public static List<ProductData> PickDesiredProducts()
         {
+            int wishes = Random.value < 0.5f ? 1 : (Random.value < 0.8f ? 2 : 3);
+            return PickDesiredProducts(wishes);
+        }
+
+        public static List<ProductData> PickDesiredProducts(int wishes)
+        {
             var result = new List<ProductData>();
             var unlocked = Core.UnlockManager.Instance != null
                 ? Core.UnlockManager.Instance.GetUnlockedProducts()
                 : new List<ProductData>(Core.DefaultGameData.Products);
             if (unlocked.Count == 0) return result;
 
-            int wishes = Random.value < 0.5f ? 1 : (Random.value < 0.8f ? 2 : 3);
+            wishes = Mathf.Clamp(wishes, 1, Mathf.Min(5, unlocked.Count));
             for (int i = 0; i < wishes; i++)
             {
-                var pick = WeightedPick(unlocked);
+                var pick = WeightedPick(unlocked, result);
                 if (pick != null && !result.Contains(pick)) result.Add(pick);
             }
             return result;
         }
 
-        static ProductData WeightedPick(List<ProductData> products)
+        public static ProductData PickBonusProduct(List<ProductData> excluded)
+        {
+            var unlocked = Core.UnlockManager.Instance != null
+                ? Core.UnlockManager.Instance.GetUnlockedProducts()
+                : new List<ProductData>(Core.DefaultGameData.Products);
+            return WeightedPick(unlocked, excluded);
+        }
+
+        static ProductData WeightedPick(List<ProductData> products, List<ProductData> excluded)
         {
             float total = 0f;
-            foreach (var p in products) total += EffectiveDemand(p);
+            foreach (var p in products)
+                if (excluded == null || !excluded.Contains(p))
+                    total += EffectiveDemand(p);
             if (total <= 0f) return null;
             float r = Random.value * total;
             foreach (var p in products)
             {
+                if (excluded != null && excluded.Contains(p)) continue;
                 r -= EffectiveDemand(p);
                 if (r <= 0f) return p;
             }
-            return products[products.Count - 1];
+            for (int i = products.Count - 1; i >= 0; i--)
+                if (excluded == null || !excluded.Contains(products[i]))
+                    return products[i];
+            return null;
         }
 
         public static float EffectiveDemand(ProductData p)

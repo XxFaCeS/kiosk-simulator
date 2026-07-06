@@ -57,6 +57,7 @@ namespace Kiosk.Customers
             go.transform.position = EntrancePosition;
             var ai = go.AddComponent<CustomerAI>();
             ai.Init(intent, EntrancePosition, ShopCenter);
+            go.name = "Kunde_" + ai.Profile + "_" + intent;
             if (intent == CustomerIntent.PackagePickup)
             {
                 var pkg = Packages.PackageSystem.Instance;

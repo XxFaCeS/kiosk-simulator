@@ -1,6 +1,5 @@
 using UnityEngine;
 using UnityEngine.UI;
-using UnityEngine.EventSystems;
 using Kiosk.Core;
 
 namespace Kiosk.UI
@@ -24,6 +23,18 @@ namespace Kiosk.UI
         Text _promptText;
         Text _toastText;
         float _toastTimer;
+        float _moneyFlashTimer;
+        Color _moneyBaseColor = Color.white;
+        GameObject _tutorialRoot;
+        Text _tutorialText;
+        int _tutorialStep;
+        static readonly string[] TutorialSteps =
+        {
+            "Schritt 1/4\nBewege dich mit WASD und schaue dich mit der Maus um.",
+            "Schritt 2/4\nFuelle mit [E] ein Regal aus dem Lager auf, sobald Ware vorhanden ist.",
+            "Schritt 3/4\nWenn ein Kunde vorne an der Kasse wartet, druecke [E], scanne die Artikel und kassiere.",
+            "Schritt 4/4\nOeffne mit [Tab] das Tablet fuer Bestellungen, Lagerzuweisungen, Ziele und Upgrades."
+        };
 
         TabletUI _tablet;
         CheckoutUI _checkout;
@@ -43,6 +54,8 @@ namespace Kiosk.UI
         {
             HookEvents();
             RefreshHUD();
+            if (SaveSystem.SaveLoadSystem.Instance != null && !SaveSystem.SaveLoadSystem.Instance.TutorialCompleted)
+                OpenTutorial();
         }
 
         void BuildCanvas()
@@ -54,12 +67,7 @@ namespace Kiosk.UI
             var scaler = canvasGo.GetComponent<CanvasScaler>();
             scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
             scaler.referenceResolution = new Vector2(1600, 900);
-
-            if (FindObjectOfType<EventSystem>() == null)
-            {
-                var es = new GameObject("EventSystem", typeof(EventSystem), typeof(StandaloneInputModule));
-                es.transform.SetParent(transform, false);
-            }
+            ProceduralAssetGenerator.EnsureEventSystem();
         }
 
         void BuildHUD()
@@ -70,6 +78,7 @@ namespace Kiosk.UI
             var topBar = ProceduralAssetGenerator.CreatePanel(hud.transform, "TopBar",
                 new Vector2(0f, 0.94f), new Vector2(1f, 1f), new Color(0f, 0f, 0f, 0.55f));
             _moneyText = MakeBarText(topBar.transform, "Geld", 0.00f, 0.18f);
+            _moneyBaseColor = _moneyText.color;
             _dayText = MakeBarText(topBar.transform, "Tag", 0.19f, 0.30f);
             _clockText = MakeBarText(topBar.transform, "Uhr", 0.31f, 0.42f);
             _repText = MakeBarText(topBar.transform, "Ruf", 0.43f, 0.58f);
@@ -126,6 +135,32 @@ namespace Kiosk.UI
             _pauseMenu = new GameObject("PauseMenuUI").AddComponent<PauseMenuUI>();
             _pauseMenu.transform.SetParent(Canvas.transform, false);
             _pauseMenu.Build();
+
+            BuildTutorial();
+        }
+
+        void BuildTutorial()
+        {
+            _tutorialRoot = ProceduralAssetGenerator.CreatePanel(Canvas.transform, "Tutorial",
+                new Vector2(0.18f, 0.18f), new Vector2(0.82f, 0.82f), new Color(0.05f, 0.08f, 0.12f, 0.97f));
+            var titleGo = ProceduralAssetGenerator.CreatePanel(_tutorialRoot.transform, "Titel",
+                new Vector2(0f, 0.84f), new Vector2(1f, 1f), new Color(0.14f, 0.2f, 0.3f, 1f));
+            var title = ProceduralAssetGenerator.CreateText(titleGo.transform, "Text", "TUTORIAL", 28, TextAnchor.MiddleCenter);
+            title.color = new Color(0.95f, 0.9f, 0.45f);
+
+            var bodyGo = ProceduralAssetGenerator.CreatePanel(_tutorialRoot.transform, "Textbereich",
+                new Vector2(0.08f, 0.26f), new Vector2(0.92f, 0.8f), new Color(0f, 0f, 0f, 0.22f));
+            _tutorialText = ProceduralAssetGenerator.CreateText(bodyGo.transform, "Text", "", 24, TextAnchor.MiddleCenter);
+
+            var buttonBar = ProceduralAssetGenerator.CreatePanel(_tutorialRoot.transform, "Buttons",
+                new Vector2(0.12f, 0.06f), new Vector2(0.88f, 0.18f), Color.clear);
+            var layout = buttonBar.AddComponent<HorizontalLayoutGroup>();
+            layout.spacing = 10f;
+            layout.childForceExpandWidth = true;
+            layout.childForceExpandHeight = true;
+            ProceduralAssetGenerator.CreateButton(buttonBar.transform, "Weiter", "Weiter", NextTutorialStep);
+            ProceduralAssetGenerator.CreateButton(buttonBar.transform, "Schliessen", "Nicht mehr anzeigen", CloseTutorial);
+            _tutorialRoot.SetActive(false);
         }
 
         void HookEvents()
@@ -156,6 +191,19 @@ namespace Kiosk.UI
                 if (_toastTimer <= 0f && _toastText != null)
                     _toastText.transform.parent.gameObject.SetActive(false);
             }
+            if (_moneyText != null)
+            {
+                if (_moneyFlashTimer > 0f)
+                {
+                    _moneyFlashTimer -= Time.unscaledDeltaTime;
+                    float pulse = 0.55f + Mathf.Abs(Mathf.Sin(Time.unscaledTime * 16f)) * 0.45f;
+                    _moneyText.color = Color.Lerp(_moneyBaseColor, new Color(0.95f, 0.85f, 0.25f), pulse);
+                }
+                else
+                {
+                    _moneyText.color = Color.Lerp(_moneyText.color, _moneyBaseColor, Time.unscaledDeltaTime * 10f);
+                }
+            }
         }
 
         public void RefreshHUD()
@@ -184,13 +232,14 @@ namespace Kiosk.UI
                 return (_tablet != null && _tablet.IsOpen)
                     || (_checkout != null && _checkout.IsOpen)
                     || (_daySummary != null && _daySummary.IsOpen)
-                    || (_pauseMenu != null && _pauseMenu.IsOpen);
+                    || (_pauseMenu != null && _pauseMenu.IsOpen)
+                    || (_tutorialRoot != null && _tutorialRoot.activeSelf);
             }
         }
 
         public void ToggleTablet()
         {
-            if (_checkout.IsOpen || _daySummary.IsOpen || _pauseMenu.IsOpen) return;
+            if (_checkout.IsOpen || _daySummary.IsOpen || _pauseMenu.IsOpen || (_tutorialRoot != null && _tutorialRoot.activeSelf)) return;
             if (_tablet.IsOpen) _tablet.Close(); else _tablet.Open();
             GameManager.Instance.SetUIMode(_tablet.IsOpen);
         }
@@ -199,12 +248,15 @@ namespace Kiosk.UI
         {
             if (_checkout.IsOpen) { _checkout.Cancel(); GameManager.Instance.SetUIMode(false); return; }
             if (_tablet.IsOpen) { _tablet.Close(); GameManager.Instance.SetUIMode(false); return; }
+            if (_tutorialRoot != null && _tutorialRoot.activeSelf) { CloseTutorial(); GameManager.Instance.SetUIMode(false); return; }
             if (_daySummary.IsOpen) return;
             if (_pauseMenu.IsOpen) _pauseMenu.Close(); else _pauseMenu.Open();
         }
 
         public void OpenCheckout(Customers.CustomerAI customer)
         {
+            if (_tutorialRoot != null && _tutorialRoot.activeSelf)
+                CloseTutorial();
             _checkout.Open(customer);
             GameManager.Instance.SetUIMode(true);
         }
@@ -234,6 +286,46 @@ namespace Kiosk.UI
             _toastText.transform.parent.gameObject.SetActive(true);
             _toastText.text = message;
             _toastTimer = 3f;
+        }
+
+        public void NotifySale(float amount)
+        {
+            _moneyFlashTimer = 0.7f;
+            ShowToast("Verkauf abgeschlossen: +" + amount.ToString("F2") + " Euro");
+        }
+
+        void OpenTutorial()
+        {
+            _tutorialStep = 0;
+            RefreshTutorial();
+            _tutorialRoot.SetActive(true);
+            if (GameManager.Instance != null) GameManager.Instance.SetUIMode(true);
+        }
+
+        void NextTutorialStep()
+        {
+            _tutorialStep++;
+            if (_tutorialStep >= TutorialSteps.Length)
+            {
+                CloseTutorial();
+                return;
+            }
+            RefreshTutorial();
+        }
+
+        void RefreshTutorial()
+        {
+            if (_tutorialText != null)
+                _tutorialText.text = TutorialSteps[Mathf.Clamp(_tutorialStep, 0, TutorialSteps.Length - 1)];
+        }
+
+        void CloseTutorial()
+        {
+            if (_tutorialRoot != null) _tutorialRoot.SetActive(false);
+            if (SaveSystem.SaveLoadSystem.Instance != null)
+                SaveSystem.SaveLoadSystem.Instance.MarkTutorialCompleted();
+            if (!AnyWindowOpen && GameManager.Instance != null)
+                GameManager.Instance.SetUIMode(false);
         }
     }
 }

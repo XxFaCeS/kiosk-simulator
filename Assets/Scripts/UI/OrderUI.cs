@@ -4,6 +4,7 @@ using UnityEngine.UI;
 using Kiosk.Core;
 using Kiosk.Orders;
 using Kiosk.Products;
+using Kiosk.Upgrades;
 
 namespace Kiosk.UI
 {
@@ -89,9 +90,10 @@ namespace Kiosk.UI
                 int inStock = Inventory.InventoryManager.Instance != null
                     ? Inventory.InventoryManager.Instance.GetCount(p.Id) : 0;
                 float buy = order != null ? order.GetBuyPrice(p) : p.BuyPrice;
+                float sell = UpgradeManager.Instance != null ? UpgradeManager.Instance.GetAdjustedSellPrice(p) : p.SellPrice;
 
                 string label = p.DisplayName + (p.AgeRestricted ? " [18+]" : "") +
-                    "\nEK " + buy.ToString("F2") + " / VK " + p.SellPrice.ToString("F2") + "  |  Lager: " + inStock;
+                    "\nEK " + buy.ToString("F2") + " / VK " + sell.ToString("F2") + "  |  Lager: " + inStock;
                 var text = ProceduralAssetGenerator.CreateText(row.transform, "Name", label, 15, TextAnchor.MiddleLeft);
                 var textLe = text.gameObject.AddComponent<LayoutElement>();
                 textLe.flexibleWidth = 3f;
