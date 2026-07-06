@@ -23,8 +23,10 @@ namespace Kiosk.UI
 
             if (FindObjectOfType<EventSystem>() == null)
             {
-                var es = new GameObject("EventSystem", typeof(EventSystem), typeof(StandaloneInputModule));
-                es.transform.SetParent(transform, false);
+                // EventSystem MUSS auf Root-Ebene liegen (kein SetParent),
+                // sonst wird es von Unity nicht als globales EventSystem erkannt
+                // und Mauseingaben / Button-Klicks funktionieren nicht.
+                new GameObject("EventSystem", typeof(EventSystem), typeof(StandaloneInputModule));
             }
 
             var background = ProceduralAssetGenerator.CreatePanel(canvas.transform, "Hintergrund",
