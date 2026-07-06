@@ -7,7 +7,7 @@ namespace Kiosk.Upgrades
         ShelfCapacity, ExtraShelf, DrinkDemand, CoffeeDemand, Patience, CheckoutSpeed,
         CardPayment, SelfCheckout, StorageCapacity, PackageCapacity, PackageBonus,
         LottoTerminal, LottoCommission, TobaccoCabinet, TheftReduction, Reputation,
-        CustomerRate, EmployeeCheckout, AutoRestock, SupplierDiscount
+        CustomerRate, EmployeeCheckout, AutoRestock, SupplierDiscount, ProductMargin
     }
 
     /// <summary>

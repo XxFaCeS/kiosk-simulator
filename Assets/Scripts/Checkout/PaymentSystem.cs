@@ -39,12 +39,14 @@ namespace Kiosk.Checkout
             if (eco != null)
             {
                 eco.AddRevenue(total);
-                eco.DayCustomersServed++;
+                eco.RegisterCustomerServed();
             }
             var gm = Core.GameManager.Instance;
             if (gm != null) gm.AddXP(5 + register.ScannedItems.Count * 2);
             if (Economy.ReputationManager.Instance != null)
                 Economy.ReputationManager.Instance.Add(1f);
+            if (UI.UIManager.Instance != null)
+                UI.UIManager.Instance.NotifySale(total);
 
             var audio = Audio.AudioManager.Instance;
             if (audio != null)

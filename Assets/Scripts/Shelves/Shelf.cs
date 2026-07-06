@@ -20,6 +20,8 @@ namespace Kiosk.Shelves
         void OnEnable() { if (!AllShelves.Contains(this)) AllShelves.Add(this); }
         void OnDisable() { AllShelves.Remove(this); }
 
+        public static void ResetRegistry() { AllShelves.Clear(); }
+
         public override string GetPrompt()
         {
             return "[E] Regal auffuellen (" + StockedUnits() + " Artikel)";
@@ -77,7 +79,7 @@ namespace Kiosk.Shelves
                 {
                     var product = Core.DefaultGameData.GetProduct(kv.Key);
                     if (product == null || kv.Value <= 0) continue;
-                    if (IsTobaccoCabinet != product.AgeRestricted) continue;
+                    if (!CanStore(product)) continue;
                     int take = Mathf.Min(slot.Capacity, kv.Value);
                     if (inv.Remove(product.Id, take))
                     {
@@ -89,6 +91,38 @@ namespace Kiosk.Shelves
                 }
             }
             return moved;
+        }
+
+        public bool CanStore(ProductData product)
+        {
+            return product != null && IsTobaccoCabinet == product.AgeRestricted;
+        }
+
+        public bool AssignProductToSlot(int slotIndex, ProductData product)
+        {
+            if (product == null || !CanStore(product)) return false;
+            if (slotIndex < 0 || slotIndex >= Slots.Count) return false;
+
+            var slot = Slots[slotIndex];
+            if (slot == null) return false;
+            if (slot.Product != null && slot.Product != product && slot.Count > 0) return false;
+            slot.Assign(product);
+            slot.RefreshVisuals();
+            return true;
+        }
+
+        public int RestockSlot(int slotIndex)
+        {
+            if (slotIndex < 0 || slotIndex >= Slots.Count) return 0;
+            var inv = Inventory.InventoryManager.Instance;
+            var slot = Slots[slotIndex];
+            if (inv == null || slot == null || slot.Product == null) return 0;
+
+            int space = slot.Capacity - slot.Count;
+            int take = Mathf.Min(space, inv.GetCount(slot.Product.Id));
+            if (take <= 0 || !inv.Remove(slot.Product.Id, take)) return 0;
+            slot.AddUnits(take);
+            return take;
         }
 
         /// <summary>Sucht einen Slot mit dem gewuenschten Produkt und Bestand.</summary>
@@ -103,6 +137,7 @@ namespace Kiosk.Shelves
         {
             foreach (var shelf in AllShelves)
             {
+                if (shelf == null) continue;
                 var slot = shelf.FindSlotWith(product);
                 if (slot != null) return slot;
             }

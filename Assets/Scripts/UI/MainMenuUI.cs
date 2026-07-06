@@ -1,6 +1,5 @@
 using UnityEngine;
 using UnityEngine.UI;
-using UnityEngine.EventSystems;
 using UnityEngine.SceneManagement;
 using Kiosk.Core;
 
@@ -20,14 +19,7 @@ namespace Kiosk.UI
             var scaler = canvasGo.GetComponent<CanvasScaler>();
             scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
             scaler.referenceResolution = new Vector2(1600, 900);
-
-            if (FindObjectOfType<EventSystem>() == null)
-            {
-                // EventSystem MUSS auf Root-Ebene liegen (kein SetParent),
-                // sonst wird es von Unity nicht als globales EventSystem erkannt
-                // und Mauseingaben / Button-Klicks funktionieren nicht.
-                new GameObject("EventSystem", typeof(EventSystem), typeof(StandaloneInputModule));
-            }
+            ProceduralAssetGenerator.EnsureEventSystem();
 
             var background = ProceduralAssetGenerator.CreatePanel(canvas.transform, "Hintergrund",
                 Vector2.zero, Vector2.one, new Color(0.07f, 0.1f, 0.16f, 1f));
@@ -55,7 +47,14 @@ namespace Kiosk.UI
             continueButton.interactable = SaveSystem.SaveLoadSystem.SaveExists();
             ProceduralAssetGenerator.CreateButton(buttons.transform, "Beenden", "Beenden", OnQuit);
 
-            var version = ProceduralAssetGenerator.CreateText(background.transform, "Version",
+            var versionRoot = new GameObject("Version", typeof(RectTransform));
+            versionRoot.transform.SetParent(background.transform, false);
+            var versionRt = versionRoot.GetComponent<RectTransform>();
+            versionRt.anchorMin = new Vector2(0.62f, 0.01f);
+            versionRt.anchorMax = new Vector2(0.98f, 0.08f);
+            versionRt.offsetMin = Vector2.zero;
+            versionRt.offsetMax = Vector2.zero;
+            var version = ProceduralAssetGenerator.CreateText(versionRoot.transform, "Text",
                 "MVP 1.0 - Alle Produkte und Systeme sind fiktiv.", 14, TextAnchor.LowerRight);
             version.color = new Color(1f, 1f, 1f, 0.4f);
         }

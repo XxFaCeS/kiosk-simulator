@@ -13,6 +13,11 @@ namespace Kiosk.Customers
         WalkingToQueue, Waiting, BeingServed, Leaving, Despawn
     }
 
+    public enum CustomerProfile
+    {
+        Regular, Hurried, Loyal, BargainHunter, Senior
+    }
+
     /// <summary>
     /// Einfache Wegpunkt-Kunden-KI: betreten, Produkte holen, anstellen,
     /// bezahlen, verlassen. Geduld sinkt beim Warten.
@@ -21,6 +26,8 @@ namespace Kiosk.Customers
     {
         public CustomerIntent Intent = CustomerIntent.Shopping;
         public CustomerState State = CustomerState.Entering;
+        public CustomerProfile Profile { get; private set; }
+        public string ProfileLabel { get; private set; }
         public int Age;
         public float MoveSpeed = 2.2f;
         public float MaxPatience = 60f;
@@ -31,27 +38,43 @@ namespace Kiosk.Customers
         public bool HasArrived { get; private set; }
         public bool IsBeingServed { get; set; }
 
-        List<ProductData> _wishlist = new List<ProductData>();
+        readonly List<ProductData> _wishlist = new List<ProductData>();
         int _wishIndex;
         Vector3 _target;
         Vector3 _entrancePos;
         ShelfSlot _targetSlot;
         float _actionTimer;
+        float _animTime;
+
+        Transform _body;
+        Transform _head;
+        Vector3 _bodyBaseLocalPos;
+        Vector3 _headBaseLocalPos;
+        TextMesh _statusText;
 
         public void Init(CustomerIntent intent, Vector3 entrance, Vector3 shopCenter)
         {
             Intent = intent;
             _entrancePos = entrance;
             Age = Random.Range(14, 80);
+
+            PickProfile();
+            ApplyProfileStats();
+
             float patienceMult = 1f;
             var up = Upgrades.UpgradeManager.Instance;
             if (up != null) patienceMult += up.GetEffectValue(Upgrades.UpgradeEffect.Patience);
             Patience = MaxPatience * patienceMult;
 
             if (intent == CustomerIntent.Shopping)
-                _wishlist = CustomerNeeds.PickDesiredProducts();
+                BuildWishlist();
             State = CustomerState.Entering;
             _target = shopCenter;
+
+            CacheVisuals();
+            ApplyProfileLook();
+            EnsureStatusDisplay();
+            UpdateStatusDisplay();
         }
 
         void Update()
@@ -80,7 +103,6 @@ namespace Kiosk.Customers
                     UpdateWaiting();
                     break;
                 case CustomerState.BeingServed:
-                    // Spieler bedient ueber CheckoutUI; Geduld pausiert.
                     break;
                 case CustomerState.Leaving:
                     if (MoveTowards(_target)) State = CustomerState.Despawn;
@@ -90,6 +112,9 @@ namespace Kiosk.Customers
                     Destroy(gameObject);
                     break;
             }
+
+            UpdateAnimation();
+            UpdateStatusDisplay();
         }
 
         bool MoveTowards(Vector3 target)
@@ -120,25 +145,25 @@ namespace Kiosk.Customers
                 if (slot != null)
                 {
                     _targetSlot = slot;
-                    _target = slot.transform.position + slot.transform.forward * 0f;
                     _target = new Vector3(slot.transform.position.x, transform.position.y, slot.transform.position.z + 1.0f);
                     State = CustomerState.WalkingToShelf;
                     return;
                 }
-                // Produkt nicht verfuegbar -> leicht unzufrieden
                 _wishIndex++;
                 if (Economy.ReputationManager.Instance != null)
                     Economy.ReputationManager.Instance.Add(-0.5f);
             }
-            // Alle Wuensche geprueft
             if (Basket.Count > 0) GoToQueue();
             else LeaveShop(false);
         }
 
         void TakeProduct()
         {
-            if (_targetSlot != null && _targetSlot.Product == _wishlist[_wishIndex] && _targetSlot.TakeUnit())
-                Basket.Add(_wishlist[_wishIndex]);
+            bool hasWish = _wishIndex < _wishlist.Count;
+            ProductData wantedProduct = hasWish ? _wishlist[_wishIndex] : null;
+            bool correctSlot = _targetSlot != null && wantedProduct != null && _targetSlot.Product == wantedProduct;
+            if (correctSlot && _targetSlot.TakeUnit())
+                Basket.Add(wantedProduct);
             _wishIndex++;
             State = CustomerState.FindingProduct;
         }
@@ -164,7 +189,6 @@ namespace Kiosk.Customers
             var queue = CustomerQueue.Instance;
             if (queue == null) { LeaveShop(false); return; }
 
-            // Position in der Schlange nachruecken
             Vector3 pos = queue.GetPositionFor(this);
             if (!MoveTowards(pos)) return;
 
@@ -176,7 +200,6 @@ namespace Kiosk.Customers
 
         void AbandonQueue()
         {
-            // Unzufrieden gehen; evtl. Diebstahl der Korbware
             if (Economy.ReputationManager.Instance != null)
                 Economy.ReputationManager.Instance.Add(-3f);
             if (Audio.AudioManager.Instance != null)
@@ -189,7 +212,6 @@ namespace Kiosk.Customers
                 if (up != null) theftChance *= 1f - Mathf.Clamp01(up.GetEffectValue(Upgrades.UpgradeEffect.TheftReduction));
                 if (Random.value > theftChance)
                 {
-                    // Ware wird zurueckgelassen -> zurueck ins Lager
                     var inv = Inventory.InventoryManager.Instance;
                     if (inv != null)
                         foreach (var p in Basket) inv.Add(p.Id, 1);
@@ -219,6 +241,181 @@ namespace Kiosk.Customers
             if (queue != null) queue.Leave(this);
             _target = _entrancePos;
             State = CustomerState.Leaving;
+        }
+
+        void PickProfile()
+        {
+            float roll = Random.value;
+            if (roll < 0.18f) Profile = CustomerProfile.Hurried;
+            else if (roll < 0.36f) Profile = CustomerProfile.Loyal;
+            else if (roll < 0.56f) Profile = CustomerProfile.BargainHunter;
+            else if (roll < 0.72f) Profile = CustomerProfile.Senior;
+            else Profile = CustomerProfile.Regular;
+        }
+
+        void ApplyProfileStats()
+        {
+            switch (Profile)
+            {
+                case CustomerProfile.Hurried:
+                    ProfileLabel = "Eilig";
+                    MoveSpeed = 2.9f;
+                    MaxPatience = 34f;
+                    break;
+                case CustomerProfile.Loyal:
+                    ProfileLabel = "Stammkunde";
+                    MoveSpeed = 2.15f;
+                    MaxPatience = 82f;
+                    break;
+                case CustomerProfile.BargainHunter:
+                    ProfileLabel = "Sparfuchs";
+                    MoveSpeed = 2.1f;
+                    MaxPatience = 68f;
+                    break;
+                case CustomerProfile.Senior:
+                    ProfileLabel = "Senior";
+                    MoveSpeed = 1.55f;
+                    MaxPatience = 88f;
+                    break;
+                default:
+                    ProfileLabel = "Standard";
+                    MoveSpeed = 2.2f;
+                    MaxPatience = 60f;
+                    break;
+            }
+        }
+
+        void BuildWishlist()
+        {
+            int desired = 2;
+            switch (Profile)
+            {
+                case CustomerProfile.Hurried: desired = 1; break;
+                case CustomerProfile.Loyal: desired = 3; break;
+                case CustomerProfile.BargainHunter: desired = 2; break;
+                case CustomerProfile.Senior: desired = 2; break;
+            }
+
+            _wishlist.Clear();
+            _wishlist.AddRange(CustomerNeeds.PickDesiredProducts(desired));
+            while (_wishlist.Count < desired)
+            {
+                var bonus = CustomerNeeds.PickBonusProduct(_wishlist);
+                if (bonus == null) break;
+                _wishlist.Add(bonus);
+            }
+
+            if (Profile == CustomerProfile.BargainHunter)
+                _wishlist.Sort((a, b) => a.SellPrice.CompareTo(b.SellPrice));
+        }
+
+        void CacheVisuals()
+        {
+            _body = transform.Find("Koerper");
+            _head = transform.Find("Kopf");
+            if (_body != null) _bodyBaseLocalPos = _body.localPosition;
+            if (_head != null) _headBaseLocalPos = _head.localPosition;
+        }
+
+        void ApplyProfileLook()
+        {
+            Color bodyColor = new Color(0.55f, 0.7f, 0.95f);
+            float scale = 1f;
+            switch (Profile)
+            {
+                case CustomerProfile.Hurried: bodyColor = new Color(0.95f, 0.5f, 0.3f); scale = 1.02f; break;
+                case CustomerProfile.Loyal: bodyColor = new Color(0.3f, 0.72f, 0.42f); scale = 1.08f; break;
+                case CustomerProfile.BargainHunter: bodyColor = new Color(0.95f, 0.82f, 0.25f); scale = 0.98f; break;
+                case CustomerProfile.Senior: bodyColor = new Color(0.7f, 0.64f, 0.85f); scale = 0.92f; break;
+            }
+
+            transform.localScale = Vector3.one * scale;
+            if (_body != null)
+            {
+                var renderer = _body.GetComponent<Renderer>();
+                if (renderer != null) renderer.material.color = bodyColor;
+            }
+        }
+
+        void EnsureStatusDisplay()
+        {
+            var go = new GameObject("Status");
+            go.transform.SetParent(transform, false);
+            go.transform.localPosition = new Vector3(0f, 2.55f, 0f);
+            _statusText = go.AddComponent<TextMesh>();
+            _statusText.fontSize = 40;
+            _statusText.characterSize = 0.045f;
+            _statusText.anchor = TextAnchor.MiddleCenter;
+            _statusText.alignment = TextAlignment.Center;
+            _statusText.color = Color.white;
+        }
+
+        void UpdateStatusDisplay()
+        {
+            if (_statusText == null) return;
+
+            var camera = Camera.main;
+            if (camera != null)
+            {
+                _statusText.transform.rotation = Quaternion.LookRotation(_statusText.transform.position - camera.transform.position);
+                _statusText.transform.Rotate(0f, 180f, 0f);
+            }
+
+            float patience01 = MaxPatience > 0.01f ? Mathf.Clamp01(Patience / MaxPatience) : 0f;
+            string stateLabel;
+            switch (State)
+            {
+                case CustomerState.BeingServed: stateLabel = "Bestellt"; break;
+                case CustomerState.Waiting: stateLabel = "Wartet"; break;
+                case CustomerState.WalkingToQueue: stateLabel = "Zur Kasse"; break;
+                case CustomerState.WalkingToShelf: stateLabel = "Sucht Ware"; break;
+                case CustomerState.Leaving: stateLabel = "Geht"; break;
+                default: stateLabel = "Im Laden"; break;
+            }
+
+            string wishLabel = "";
+            if (Intent == CustomerIntent.Shopping && _wishIndex < _wishlist.Count)
+                wishLabel = "\nWunsch: " + _wishlist[_wishIndex].DisplayName;
+            else if (Intent == CustomerIntent.PackagePickup && !string.IsNullOrEmpty(PackageCode))
+                wishLabel = "\nCode: " + PackageCode;
+            else if (Intent == CustomerIntent.PackageDropoff)
+                wishLabel = "\nWunsch: Paket abgeben";
+            else if (Intent == CustomerIntent.Lotto)
+                wishLabel = "\nWunsch: Lotto";
+
+            _statusText.text = ProfileLabel + "\n" + stateLabel + "  " + Mathf.CeilToInt(Mathf.Max(0f, Patience)) + "s" + wishLabel;
+            _statusText.color = Color.Lerp(new Color(1f, 0.35f, 0.35f), new Color(0.55f, 1f, 0.65f), patience01);
+        }
+
+        void UpdateAnimation()
+        {
+            _animTime += Time.deltaTime * Mathf.Max(1f, MoveSpeed);
+            bool walking = State == CustomerState.Entering || State == CustomerState.WalkingToShelf
+                || State == CustomerState.WalkingToQueue || State == CustomerState.Leaving;
+
+            if (_body != null)
+            {
+                Vector3 bodyOffset = Vector3.zero;
+                if (walking)
+                    bodyOffset = new Vector3(0f, Mathf.Abs(Mathf.Sin(_animTime * 6f)) * 0.07f, 0f);
+                else if (State == CustomerState.Waiting)
+                    bodyOffset = new Vector3(Mathf.Sin(_animTime * 1.8f) * 0.03f, 0f, 0f);
+                _body.localPosition = Vector3.Lerp(_body.localPosition, _bodyBaseLocalPos + bodyOffset, Time.deltaTime * 8f);
+            }
+
+            if (_head != null)
+            {
+                Vector3 headOffset = Vector3.zero;
+                float headTilt = 0f;
+                if (walking)
+                    headOffset = new Vector3(0f, Mathf.Abs(Mathf.Cos(_animTime * 6f)) * 0.03f, 0f);
+                else if (State == CustomerState.BeingServed)
+                    headTilt = Mathf.Sin(_animTime * 10f) * 10f;
+                else if (State == CustomerState.Waiting)
+                    headTilt = Mathf.Sin(_animTime * 2f) * 4f;
+                _head.localPosition = Vector3.Lerp(_head.localPosition, _headBaseLocalPos + headOffset, Time.deltaTime * 8f);
+                _head.localRotation = Quaternion.Lerp(_head.localRotation, Quaternion.Euler(0f, 0f, headTilt), Time.deltaTime * 8f);
+            }
         }
     }
 }

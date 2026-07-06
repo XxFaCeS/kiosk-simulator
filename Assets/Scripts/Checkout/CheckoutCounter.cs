@@ -15,7 +15,13 @@ namespace Kiosk.Checkout
 
         void Awake()
         {
-            if (Instance == null) Instance = this;
+            if (Instance != null && Instance != this) { Destroy(gameObject); return; }
+            Instance = this;
+        }
+
+        void OnDestroy()
+        {
+            if (Instance == this) Instance = null;
         }
 
         public override string GetPrompt()
@@ -37,6 +43,7 @@ namespace Kiosk.Checkout
 
             CurrentCustomer = front;
             front.IsBeingServed = true;
+            front.State = CustomerState.BeingServed;
             var ui = UI.UIManager.Instance;
             if (ui != null) ui.OpenCheckout(front);
         }

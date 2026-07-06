@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.Rendering;
 using Kiosk.Shelves;
 
 namespace Kiosk.Core
@@ -23,8 +24,12 @@ namespace Kiosk.Core
 
         void Awake()
         {
+            if (Instance != null && Instance != this) { Destroy(gameObject); return; }
             Instance = this;
             Time.timeScale = 1f;
+            Shelf.ResetRegistry();
+            ProceduralAssetGenerator.ClearCache();
+            DefaultGameData.ResetRuntimeData();
             CreateManagers();
         }
 
@@ -205,10 +210,13 @@ namespace Kiosk.Core
 
         void BuildLighting()
         {
+            RenderSettings.ambientMode = AmbientMode.Flat;
+            RenderSettings.ambientLight = new Color(0.72f, 0.7f, 0.68f);
             var lightGo = new GameObject("Sonne");
             _mainLight = lightGo.AddComponent<Light>();
             _mainLight.type = LightType.Directional;
-            _mainLight.intensity = 1f;
+            _mainLight.intensity = 0.85f;
+            _mainLight.color = new Color(1f, 0.95f, 0.88f);
             _mainLight.transform.rotation = Quaternion.Euler(50f, -30f, 0f);
             if (DayNightCycle.Instance != null) DayNightCycle.Instance.SunLight = _mainLight;
 
@@ -216,23 +224,39 @@ namespace Kiosk.Core
             var pl = interior.AddComponent<Light>();
             pl.type = LightType.Point;
             pl.range = 12f;
-            pl.intensity = 1.1f;
+            pl.intensity = 1.25f;
+            pl.color = new Color(1f, 0.88f, 0.72f);
             interior.transform.position = new Vector3(0f, 2.6f, 0f);
+
+            CreateCeilingLight("Deckenlicht_Regale", new Vector3(-2.8f, 2.5f, 1.3f), 8f, 0.7f);
+            CreateCeilingLight("Deckenlicht_Kasse", new Vector3(2.6f, 2.35f, -1f), 7f, 0.9f);
+        }
+
+        void CreateCeilingLight(string name, Vector3 position, float range, float intensity)
+        {
+            var go = new GameObject(name);
+            var light = go.AddComponent<Light>();
+            light.type = LightType.Point;
+            light.range = range;
+            light.intensity = intensity;
+            light.color = new Color(1f, 0.84f, 0.68f);
+            go.transform.position = position;
         }
 
         void BuildPlayer()
         {
             var player = new GameObject("Spieler");
-            player.transform.position = new Vector3(3.8f, 1.1f, -1f);
+            player.transform.position = new Vector3(3.8f, 0f, -1f);
             var cc = player.AddComponent<CharacterController>();
             cc.height = 1.8f;
             cc.radius = 0.3f;
-            cc.center = new Vector3(0f, 0f, 0f);
+            cc.center = new Vector3(0f, 0.9f, 0f);
 
             var camGo = new GameObject("Spieler_Kamera");
             camGo.transform.SetParent(player.transform, false);
-            camGo.transform.localPosition = new Vector3(0f, 0.7f, 0f);
+            camGo.transform.localPosition = new Vector3(0f, 1.55f, 0f);
             var cam = camGo.AddComponent<Camera>();
+            cam.tag = "MainCamera";
             cam.nearClipPlane = 0.05f;
             camGo.AddComponent<AudioListener>();
 
@@ -285,7 +309,8 @@ namespace Kiosk.Core
 
             // Regale vorab befuellen, damit sofort verkauft werden kann
             foreach (var shelf in Shelf.AllShelves)
-                shelf.RestockFromInventory();
+                if (shelf != null)
+                    shelf.RestockFromInventory();
         }
 
         void HandleDayEnded()
