@@ -31,9 +31,9 @@ namespace Kiosk.UI
         static readonly string[] TutorialSteps =
         {
             "Schritt 1/4\nBewege dich mit WASD und schaue dich mit der Maus um.",
-            "Schritt 2/4\nFuelle mit [E] ein Regal aus dem Lager auf, sobald Ware vorhanden ist.",
-            "Schritt 3/4\nWenn ein Kunde vorne an der Kasse wartet, druecke [E], scanne die Artikel und kassiere.",
-            "Schritt 4/4\nOeffne mit [Tab] das Tablet fuer Bestellungen, Lagerzuweisungen, Ziele und Upgrades."
+            "Schritt 2/4\nFülle mit [E] ein Regal aus dem Lager auf, sobald Ware vorhanden ist.",
+            "Schritt 3/4\nWenn ein Kunde vorne an der Kasse wartet, drücke [E], scanne die Artikel und kassiere.",
+            "Schritt 4/4\nÖffne mit [Tab] das Tablet für Bestellungen, Lagerzuweisungen, Ziele und Upgrades."
         };
 
         TabletUI _tablet;

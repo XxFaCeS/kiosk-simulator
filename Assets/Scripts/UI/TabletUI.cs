@@ -160,7 +160,7 @@ namespace Kiosk.UI
                 "TAGESZIELE\n" +
                 "- Umsatz: " + eco.DayRevenue.ToString("F2") + " / " + eco.DailyRevenueGoal.ToString("F2") + " Euro\n" +
                 "- Kunden: " + eco.DayCustomersServed + " / " + eco.DailyCustomerGoal + "\n" +
-                "- Bonus bei Erfuellung: +" + eco.DailyGoalBonus.ToString("F2") + " Euro\n\n" +
+                "- Bonus bei Erfüllung: +" + eco.DailyGoalBonus.ToString("F2") + " Euro\n\n" +
                 "MEILENSTEINE\n" +
                 "- Gesamtumsatz: " + eco.LifetimeRevenue.ToString("F2") + " / 500.00 Euro\n" +
                 "- Bediente Kunden: " + eco.LifetimeCustomersServed + " / 25\n" +
@@ -228,8 +228,8 @@ namespace Kiosk.UI
 
             int moved = shelf.RestockSlot(_selectedSlotIndex);
             UIManager.Instance.ShowToast(moved > 0
-                ? product.DisplayName + " gezielt in Slot " + (_selectedSlotIndex + 1) + " eingeraeumt."
-                : product.DisplayName + " wurde zugewiesen. Kein Lagerbestand zum Auffuellen.");
+                ? product.DisplayName + " gezielt in Slot " + (_selectedSlotIndex + 1) + " eingeräumt."
+                : product.DisplayName + " wurde zugewiesen. Kein Lagerbestand zum Auffüllen.");
             RefreshStorage();
         }
 
@@ -250,7 +250,7 @@ namespace Kiosk.UI
             var sb = new System.Text.StringBuilder();
             sb.AppendLine("SLOT-ZUWEISUNG");
             sb.AppendLine("Regal: " + shelf.name + "  |  Fach: " + (_selectedSlotIndex + 1) + "/" + shelf.Slots.Count);
-            sb.AppendLine("Ausgewaehltes Produkt: " + (product != null ? product.DisplayName : "keins"));
+            sb.AppendLine("Ausgewähltes Produkt: " + (product != null ? product.DisplayName : "keins"));
             sb.AppendLine();
             for (int i = 0; i < shelf.Slots.Count; i++)
             {

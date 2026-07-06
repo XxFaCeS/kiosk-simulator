@@ -362,12 +362,16 @@ namespace Kiosk.Customers
             }
 
             float patience01 = MaxPatience > 0.01f ? Mathf.Clamp01(Patience / MaxPatience) : 0f;
-            string stateLabel = State == CustomerState.BeingServed ? "Bestellt"
-                : State == CustomerState.Waiting ? "Wartet"
-                : State == CustomerState.WalkingToQueue ? "Zur Kasse"
-                : State == CustomerState.WalkingToShelf ? "Sucht Ware"
-                : State == CustomerState.Leaving ? "Geht"
-                : "Im Laden";
+            string stateLabel;
+            switch (State)
+            {
+                case CustomerState.BeingServed: stateLabel = "Bestellt"; break;
+                case CustomerState.Waiting: stateLabel = "Wartet"; break;
+                case CustomerState.WalkingToQueue: stateLabel = "Zur Kasse"; break;
+                case CustomerState.WalkingToShelf: stateLabel = "Sucht Ware"; break;
+                case CustomerState.Leaving: stateLabel = "Geht"; break;
+                default: stateLabel = "Im Laden"; break;
+            }
 
             string wishLabel = "";
             if (Intent == CustomerIntent.Shopping && _wishIndex < _wishlist.Count)
