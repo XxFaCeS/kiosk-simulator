@@ -228,8 +228,8 @@ namespace Kiosk.UI
 
             int moved = shelf.RestockSlot(_selectedSlotIndex);
             UIManager.Instance.ShowToast(moved > 0
-                ? product.DisplayName + " gezielt in Slot " + (_selectedSlotIndex + 1) + " eingeräumt."
-                : product.DisplayName + " wurde zugewiesen. Kein Lagerbestand zum Auffüllen.");
+                ? product.DisplayName + " gezielt in Slot " + (_selectedSlotIndex + 1) + " eingeraeumt."
+                : product.DisplayName + " wurde zugewiesen. Kein Lagerbestand zum Auffuellen.");
             RefreshStorage();
         }
 
