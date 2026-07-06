@@ -157,9 +157,9 @@ namespace Kiosk.Core
             U.Add(UpgradeData.Create("premium_kuehlschrank", "Premium-Kuehlschrank", "Weitere +20% Getraenke-Nachfrage.", 1200f, 5, "kuehlschrank", UpgradeEffect.DrinkDemand, 0.20f));
             U.Add(UpgradeData.Create("zweite_kasse", "Zweite Kasse", "Verkuerzt die Warteschlange (Kunden warten geduldiger).", 1500f, 8, null, UpgradeEffect.Patience, 0.30f));
             U.Add(UpgradeData.Create("schnelle_kasse", "Schnellere Kasse", "Scannen geht schneller.", 800f, 3, null, UpgradeEffect.CheckoutSpeed, 0.30f));
-            U.Add(UpgradeData.Create("scanner_profi", "Scanner-Profi", "Noch schnellere Bedienung (-20% Scan-Zeit).", 1350f, 5, "schnelle_kasse", UpgradeEffect.CheckoutSpeed, 0.20f));
+            U.Add(UpgradeData.Create("scanner_profi", "Scanner-Profi", "Noch schnellere Bedienung: die Scan-Zeit sinkt um weitere 20%.", 1350f, 5, "schnelle_kasse", UpgradeEffect.CheckoutSpeed, 0.20f));
             U.Add(UpgradeData.Create("kartenzahlung", "Kartenzahlung", "Kunden koennen mit Karte zahlen (schneller).", 400f, 2, null, UpgradeEffect.CardPayment, 1f));
-            U.Add(UpgradeData.Create("self_checkout", "Self-Checkout", "Einige Kunden kassieren sich selbst ab.", 3000f, 10, "kartenzahlung", UpgradeEffect.SelfCheckout, 0.25f));
+            U.Add(UpgradeData.Create("self_checkout", "Self-Checkout", "Einige Kunden nutzen die Selbstkasse.", 3000f, 10, "kartenzahlung", UpgradeEffect.SelfCheckout, 0.25f));
             U.Add(UpgradeData.Create("lager_gross", "Groesserer Lagerraum", "+50 Lagerkapazitaet.", 900f, 3, null, UpgradeEffect.StorageCapacity, 50f));
             U.Add(UpgradeData.Create("paketregal2", "Paketregal Stufe 2", "+6 Paketplaetze.", 500f, 4, null, UpgradeEffect.PackageCapacity, 6f));
             U.Add(UpgradeData.Create("paketstation", "Paketstation", "Automatische Paketabholung (Bonus je Paket).", 2500f, 10, "paketregal2", UpgradeEffect.PackageBonus, 1.5f));

@@ -159,8 +159,11 @@ namespace Kiosk.Customers
 
         void TakeProduct()
         {
-            if (_targetSlot != null && _wishIndex < _wishlist.Count && _targetSlot.Product == _wishlist[_wishIndex] && _targetSlot.TakeUnit())
-                Basket.Add(_wishlist[_wishIndex]);
+            bool hasWish = _wishIndex < _wishlist.Count;
+            ProductData wantedProduct = hasWish ? _wishlist[_wishIndex] : null;
+            bool correctSlot = _targetSlot != null && wantedProduct != null && _targetSlot.Product == wantedProduct;
+            if (correctSlot && _targetSlot.TakeUnit())
+                Basket.Add(wantedProduct);
             _wishIndex++;
             State = CustomerState.FindingProduct;
         }
