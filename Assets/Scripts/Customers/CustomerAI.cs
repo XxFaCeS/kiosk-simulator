@@ -10,7 +10,7 @@ namespace Kiosk.Customers
     public enum CustomerState
     {
         Entering, FindingProduct, WalkingToShelf, TakingProduct,
-        WalkingToQueue, Waiting, BeingServed, Leaving, Despawn
+        WalkingToQueue, PlaceItemOnCounter, Waiting, BeingServed, Leaving, Despawn
     }
 
     public enum CustomerProfile
@@ -37,6 +37,7 @@ namespace Kiosk.Customers
         public float Patience { get; private set; }
         public bool HasArrived { get; private set; }
         public bool IsBeingServed { get; set; }
+        public bool ItemsPlacedOnCounter { get; private set; }
 
         readonly List<ProductData> _wishlist = new List<ProductData>();
         int _wishIndex;
@@ -98,6 +99,9 @@ namespace Kiosk.Customers
                     break;
                 case CustomerState.WalkingToQueue:
                     UpdateQueueMovement();
+                    break;
+                case CustomerState.PlaceItemOnCounter:
+                    UpdateCounterPlacement();
                     break;
                 case CustomerState.Waiting:
                     UpdateWaiting();
@@ -192,10 +196,32 @@ namespace Kiosk.Customers
             Vector3 pos = queue.GetPositionFor(this);
             if (!MoveTowards(pos)) return;
 
+            if (Intent == CustomerIntent.Shopping && Basket.Count > 0 && !ItemsPlacedOnCounter
+                && queue.Front == this)
+            {
+                State = CustomerState.PlaceItemOnCounter;
+                _actionTimer = 0.35f;
+                return;
+            }
+
             if (IsBeingServed) { State = CustomerState.BeingServed; return; }
 
             Patience -= Time.deltaTime;
             if (Patience <= 0f) AbandonQueue();
+        }
+
+        void UpdateCounterPlacement()
+        {
+            var queue = CustomerQueue.Instance;
+            var counter = Checkout.CheckoutCounter.Instance;
+            if (queue == null || counter == null) { LeaveShop(false); return; }
+            if (!MoveTowards(queue.GetPositionFor(this))) return;
+
+            _actionTimer -= Time.deltaTime;
+            if (_actionTimer > 0f) return;
+
+            ItemsPlacedOnCounter = counter.PlaceItemsForCustomer(this);
+            State = CustomerState.Waiting;
         }
 
         void AbandonQueue()
@@ -229,6 +255,7 @@ namespace Kiosk.Customers
         public void FinishService(bool happy)
         {
             IsBeingServed = false;
+            ItemsPlacedOnCounter = false;
             Basket.Clear();
             if (Audio.AudioManager.Instance != null)
                 Audio.AudioManager.Instance.Play(happy ? Audio.SoundId.CustomerHappy : Audio.SoundId.CustomerUnhappy);
@@ -239,6 +266,9 @@ namespace Kiosk.Customers
         {
             var queue = CustomerQueue.Instance;
             if (queue != null) queue.Leave(this);
+            var counter = Checkout.CheckoutCounter.Instance;
+            if (counter != null) counter.ClearCustomerItems(this);
+            ItemsPlacedOnCounter = false;
             _target = _entrancePos;
             State = CustomerState.Leaving;
         }
@@ -343,6 +373,7 @@ namespace Kiosk.Customers
             go.transform.SetParent(transform, false);
             go.transform.localPosition = new Vector3(0f, 2.55f, 0f);
             _statusText = go.AddComponent<TextMesh>();
+            go.AddComponent<UI.Billboard>();
             _statusText.fontSize = 40;
             _statusText.characterSize = 0.045f;
             _statusText.anchor = TextAnchor.MiddleCenter;
@@ -354,18 +385,12 @@ namespace Kiosk.Customers
         {
             if (_statusText == null) return;
 
-            var camera = Camera.main;
-            if (camera != null)
-            {
-                _statusText.transform.rotation = Quaternion.LookRotation(_statusText.transform.position - camera.transform.position);
-                _statusText.transform.Rotate(0f, 180f, 0f);
-            }
-
             float patience01 = MaxPatience > 0.01f ? Mathf.Clamp01(Patience / MaxPatience) : 0f;
             string stateLabel;
             switch (State)
             {
                 case CustomerState.BeingServed: stateLabel = "Bestellt"; break;
+                case CustomerState.PlaceItemOnCounter: stateLabel = "Legt Ware ab"; break;
                 case CustomerState.Waiting: stateLabel = "Wartet"; break;
                 case CustomerState.WalkingToQueue: stateLabel = "Zur Kasse"; break;
                 case CustomerState.WalkingToShelf: stateLabel = "Sucht Ware"; break;

@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.Rendering;
+using Kiosk.Placement;
 using Kiosk.Shelves;
 
 namespace Kiosk.Core
@@ -62,6 +63,7 @@ namespace Kiosk.Core
             managers.AddComponent<Checkout.PaymentSystem>();
             managers.AddComponent<Customers.CustomerQueue>();
             managers.AddComponent<Customers.CustomerSpawner>();
+            managers.AddComponent<PlacementSystem>();
             managers.AddComponent<SaveSystem.SaveLoadSystem>();
             managers.AddComponent<Audio.AudioManager>();
             managers.AddComponent<AutomationController>();
@@ -134,7 +136,7 @@ namespace Kiosk.Core
             var queue = Customers.CustomerQueue.Instance;
             if (queue != null)
             {
-                queue.QueueStart = new Vector3(1.6f, 0f, -1f);
+                queue.QueueStart = new Vector3(1.7f, 0f, -1f);
                 queue.QueueDirection = new Vector3(-0.3f, 0f, -1f).normalized;
             }
 
@@ -174,12 +176,18 @@ namespace Kiosk.Core
 
         Shelf CreateShelf(string name, Vector3 position, bool isFridge, bool isTobacco)
         {
+            return CreateShelf(name, position, Quaternion.identity, isFridge, isTobacco, 2, 2, 1.6f);
+        }
+
+        Shelf CreateShelf(string name, Vector3 position, Quaternion rotation, bool isFridge, bool isTobacco, int columns, int levels, float width)
+        {
             var root = new GameObject(name);
             root.transform.position = position;
+            root.transform.rotation = rotation;
 
             string mat = isFridge ? "Material_Kuehlschrank" : "Material_Regal";
             var body = ProceduralAssetGenerator.CreatePrimitive(PrimitiveType.Cube, "Korpus",
-                new Vector3(1.6f, 1.8f, 0.5f), mat);
+                new Vector3(width, 1.8f, 0.5f), mat);
             body.transform.SetParent(root.transform, false);
             body.transform.localPosition = new Vector3(0f, 0.9f, 0f);
 
@@ -187,23 +195,117 @@ namespace Kiosk.Core
             shelf.IsFridge = isFridge;
             shelf.IsTobaccoCabinet = isTobacco;
 
-            // 2 Ebenen x 2 Slots
-            for (int level = 0; level < 2; level++)
-                for (int i = 0; i < 2; i++)
+            float step = columns > 1 ? width / columns : 0f;
+            float startX = -width * 0.5f + step * 0.5f;
+
+            for (int level = 0; level < levels; level++)
+                for (int i = 0; i < columns; i++)
                 {
                     var board = ProceduralAssetGenerator.CreatePrimitive(PrimitiveType.Cube, "Brett",
-                        new Vector3(0.7f, 0.04f, 0.45f), mat);
+                        new Vector3(Mathf.Max(0.42f, step - 0.1f), 0.04f, 0.45f), mat);
                     board.transform.SetParent(root.transform, false);
-                    board.transform.localPosition = new Vector3(-0.4f + i * 0.8f, 0.7f + level * 0.6f, 0.3f);
+                    board.transform.localPosition = new Vector3(startX + i * step, 0.7f + level * 0.6f, 0.3f);
                     Object.Destroy(board.GetComponent<Collider>());
 
                     var slotGo = new GameObject("Slot_" + level + "_" + i);
                     slotGo.transform.SetParent(root.transform, false);
-                    slotGo.transform.localPosition = new Vector3(-0.4f + i * 0.8f, 0.74f + level * 0.6f, 0.3f);
+                    slotGo.transform.localPosition = new Vector3(startX + i * step, 0.74f + level * 0.6f, 0.3f);
                     var slot = slotGo.AddComponent<ShelfSlot>();
                     shelf.Slots.Add(slot);
                 }
             return shelf;
+        }
+
+        public GameObject CreatePlaceableObject(string itemId, Vector3 position, Quaternion rotation, bool dynamicPlacement)
+        {
+            GameObject root = null;
+            switch (itemId)
+            {
+                case "shelf_standard":
+                    root = CreateShelf("Standardregal", position, rotation, false, false, 2, 2, 1.6f).gameObject;
+                    break;
+                case "shelf_wide":
+                    root = CreateShelf("Breitregal", position, rotation, false, false, 3, 2, 2.3f).gameObject;
+                    break;
+                case "shelf_fridge":
+                    root = CreateShelf("Kuehlregal", position, rotation, true, false, 2, 2, 1.7f).gameObject;
+                    break;
+                case "shelf_tobacco":
+                    root = CreateShelf("Tabakschrank", position, rotation, false, true, 2, 2, 1.4f).gameObject;
+                    ApplyTobaccoCabinetLook(root);
+                    break;
+                case "accessory_register":
+                    root = CreateAccessoryRoot("Zweitkasse", position, rotation);
+                    AttachChild(root.transform, PrimitiveType.Cube, "Sockel", new Vector3(0f, 0.5f, 0f), new Vector3(0.9f, 1f, 0.8f), "Material_Theke");
+                    AttachChild(root.transform, PrimitiveType.Cube, "Kasse", new Vector3(0f, 1.15f, 0f), new Vector3(0.4f, 0.3f, 0.4f), "Material_Kasse");
+                    break;
+                case "accessory_baskets":
+                    root = CreateAccessoryRoot("Einkaufskoerbe", position, rotation);
+                    for (int i = 0; i < 3; i++)
+                        AttachChild(root.transform, PrimitiveType.Cube, "Korb_" + i, new Vector3(-0.22f + i * 0.22f, 0.16f, 0f), new Vector3(0.18f, 0.12f, 0.18f), "Material_LottoTerminal");
+                    AttachChild(root.transform, PrimitiveType.Cube, "Unterlage", new Vector3(0f, 0.04f, 0f), new Vector3(0.85f, 0.08f, 0.45f), "Material_Theke");
+                    break;
+                case "accessory_counter":
+                    root = CreateAccessoryRoot("Thekenmodul", position, rotation);
+                    AttachChild(root.transform, PrimitiveType.Cube, "Modul", new Vector3(0f, 0.55f, 0f), new Vector3(1.4f, 1.1f, 0.8f), "Material_Theke");
+                    break;
+                case "accessory_storage_box":
+                    root = CreateAccessoryRoot("Lagerboxen", position, rotation);
+                    for (int i = 0; i < 2; i++)
+                        AttachChild(root.transform, PrimitiveType.Cube, "Box_" + i, new Vector3(-0.22f + i * 0.44f, 0.24f, 0f), new Vector3(0.35f, 0.45f, 0.35f), "Material_Paket");
+                    break;
+                case "accessory_signs":
+                    root = CreateAccessoryRoot("Preisschilder", position, rotation);
+                    for (int i = 0; i < 2; i++)
+                    {
+                        AttachChild(root.transform, PrimitiveType.Cube, "Pfosten_" + i, new Vector3(-0.18f + i * 0.36f, 0.25f, 0f), new Vector3(0.04f, 0.5f, 0.04f), "Material_Kasse");
+                        AttachChild(root.transform, PrimitiveType.Cube, "Schild_" + i, new Vector3(-0.18f + i * 0.36f, 0.48f, 0f), new Vector3(0.22f, 0.12f, 0.03f), "Material_Wand");
+                    }
+                    break;
+                case "accessory_lamp":
+                    root = CreateAccessoryRoot("Lampe", position, rotation);
+                    AttachChild(root.transform, PrimitiveType.Cylinder, "Standfuss", new Vector3(0f, 0.65f, 0f), new Vector3(0.08f, 0.65f, 0.08f), "Material_Kasse");
+                    AttachChild(root.transform, PrimitiveType.Sphere, "Leuchte", new Vector3(0f, 1.35f, 0f), new Vector3(0.32f, 0.22f, 0.32f), "Material_LottoTerminal");
+                    var light = root.AddComponent<Light>();
+                    light.type = LightType.Point;
+                    light.range = 7f;
+                    light.intensity = 0.75f;
+                    light.color = new Color(1f, 0.86f, 0.68f);
+                    break;
+                case "accessory_ad_sign":
+                    root = CreateAccessoryRoot("Werbeschild", position, rotation);
+                    AttachChild(root.transform, PrimitiveType.Cube, "Pfosten", new Vector3(0f, 0.8f, 0f), new Vector3(0.08f, 1.6f, 0.08f), "Material_Kasse");
+                    AttachChild(root.transform, PrimitiveType.Cube, "Schild", new Vector3(0f, 1.55f, 0f), new Vector3(1.3f, 0.5f, 0.08f), "Material_LottoTerminal");
+                    break;
+                case "accessory_decor":
+                    root = CreateAccessoryRoot("Dekoration", position, rotation);
+                    AttachChild(root.transform, PrimitiveType.Cylinder, "Topf", new Vector3(0f, 0.15f, 0f), new Vector3(0.22f, 0.15f, 0.22f), "Material_Paket");
+                    AttachChild(root.transform, PrimitiveType.Sphere, "Pflanze", new Vector3(0f, 0.48f, 0f), new Vector3(0.42f, 0.42f, 0.42f), "Material_Kunde");
+                    break;
+            }
+
+            if (root != null && dynamicPlacement)
+            {
+                var marker = root.GetComponent<PlacedObjectMarker>();
+                if (marker == null) marker = root.AddComponent<PlacedObjectMarker>();
+                marker.ItemId = itemId;
+            }
+            return root;
+        }
+
+        GameObject CreateAccessoryRoot(string name, Vector3 position, Quaternion rotation)
+        {
+            var root = new GameObject(name);
+            root.transform.SetPositionAndRotation(position, rotation);
+            return root;
+        }
+
+        GameObject AttachChild(Transform parent, PrimitiveType primitive, string name, Vector3 localPosition, Vector3 localScale, string materialName)
+        {
+            var child = ProceduralAssetGenerator.CreatePrimitive(primitive, name, localScale, materialName);
+            child.transform.SetParent(parent, false);
+            child.transform.localPosition = localPosition;
+            return child;
         }
 
         // ---------- Licht / Spieler ----------
@@ -277,10 +379,12 @@ namespace Kiosk.Core
 
         void SetupGameStart()
         {
+            bool loadedSave = false;
             if (LoadSaveOnStart && SaveSystem.SaveLoadSystem.Instance != null
                 && SaveSystem.SaveLoadSystem.Instance.Load())
             {
                 LoadSaveOnStart = false;
+                loadedSave = true;
             }
             else
             {
@@ -292,7 +396,7 @@ namespace Kiosk.Core
             if (cycle != null)
             {
                 cycle.OnDayEnded += HandleDayEnded;
-                cycle.BeginDay();
+                if (!loadedSave) cycle.BeginDay();
             }
         }
 

@@ -47,6 +47,8 @@ namespace Kiosk.Checkout
                 Economy.ReputationManager.Instance.Add(1f);
             if (UI.UIManager.Instance != null)
                 UI.UIManager.Instance.NotifySale(total);
+            if (CheckoutCounter.Instance != null)
+                CheckoutCounter.Instance.ShowPaymentFeedback(total);
 
             var audio = Audio.AudioManager.Instance;
             if (audio != null)

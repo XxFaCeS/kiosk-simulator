@@ -151,8 +151,11 @@ namespace Kiosk.UI
         {
             if (_scanCooldown > 0f) return;
             var register = Checkout.CashRegister.Instance;
+            Products.ProductData scannedItem = register.RemainingItems.Count > 0 ? (Products.ProductData)register.RemainingItems[0] : null;
             if (register.ScanNext())
             {
+                var counter = Checkout.CheckoutCounter.Instance;
+                if (counter != null) counter.AnimateScannedItem(scannedItem);
                 _scanCooldown = register.ScanDuration;
                 RefreshShoppingList();
                 _info.text = "Scan erfolgreich - naechster Artikel bereit.";

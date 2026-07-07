@@ -41,6 +41,8 @@ namespace Kiosk.Core
         public void SetTime(float hour)
         {
             TimeOfDay = Mathf.Clamp(hour, 0f, 24f);
+            DayRunning = TimeOfDay < CloseHour;
+            ShopOpen = TimeOfDay >= OpenHour && TimeOfDay < CloseHour;
         }
 
         void Update()

@@ -19,6 +19,11 @@ namespace Kiosk.Delivery
             Prompt = "[E] Karton auspacken (" + TotalUnits() + " Artikel)";
         }
 
+        public List<OrderLine> GetContentsSnapshot()
+        {
+            return new List<OrderLine>(_contents);
+        }
+
         int TotalUnits()
         {
             int t = 0;

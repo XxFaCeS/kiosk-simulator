@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using System.IO;
 using UnityEngine;
+using Kiosk.Placement;
 using Kiosk.Shelves;
 
 namespace Kiosk.SaveSystem
@@ -9,10 +10,33 @@ namespace Kiosk.SaveSystem
     public class StockEntry { public string ProductId; public int Count; }
 
     [System.Serializable]
-    public class ShelfSlotEntry { public int ShelfIndex; public int SlotIndex; public string ProductId; public int Count; }
+    public class ShelfSlotEntry
+    {
+        public int ShelfIndex;
+        public int SlotIndex;
+        public string ProductId;
+        public int Count;
+        public string ShelfName;
+        public Vector3 ShelfPosition;
+    }
 
     [System.Serializable]
     public class PriceEntry { public string ProductId; public float SellPrice; }
+
+    [System.Serializable]
+    public class PlacedObjectEntry
+    {
+        public string ItemId;
+        public Vector3 Position;
+        public Vector3 EulerAngles;
+    }
+
+    [System.Serializable]
+    public class DeliveryBoxEntry
+    {
+        public Vector3 Position;
+        public List<Orders.OrderLine> Contents = new List<Orders.OrderLine>();
+    }
 
     [System.Serializable]
     public class SaveGame
@@ -28,6 +52,9 @@ namespace Kiosk.SaveSystem
         public List<string> PurchasedUpgrades = new List<string>();
         public List<Packages.PackageItem> StoredPackages = new List<Packages.PackageItem>();
         public List<PriceEntry> Prices = new List<PriceEntry>();
+        public List<PlacedObjectEntry> PlacedObjects = new List<PlacedObjectEntry>();
+        public List<Delivery.PendingDeliverySaveData> PendingDeliveries = new List<Delivery.PendingDeliverySaveData>();
+        public List<DeliveryBoxEntry> SpawnedDeliveryBoxes = new List<DeliveryBoxEntry>();
         public float[] WeekProfits = new float[7];
         public bool TutorialCompleted;
         public float LifetimeRevenue;
@@ -39,6 +66,9 @@ namespace Kiosk.SaveSystem
     /// </summary>
     public class SaveLoadSystem : MonoBehaviour
     {
+        const float ShelfExactMatchDistance = 0.05f;
+        const float ShelfFallbackMatchDistance = 0.35f;
+
         public static SaveLoadSystem Instance { get; private set; }
         public bool TutorialCompleted { get; private set; }
 
@@ -89,7 +119,14 @@ namespace Kiosk.SaveSystem
                     var slot = shelf.Slots[i];
                     if (slot.Product != null && slot.Count > 0)
                         save.ShelfStock.Add(new ShelfSlotEntry
-                        { ShelfIndex = s, SlotIndex = i, ProductId = slot.Product.Id, Count = slot.Count });
+                        {
+                            ShelfIndex = s,
+                            SlotIndex = i,
+                            ProductId = slot.Product.Id,
+                            Count = slot.Count,
+                            ShelfName = shelf.name,
+                            ShelfPosition = shelf.transform.position
+                        });
                 }
             }
 
@@ -98,6 +135,29 @@ namespace Kiosk.SaveSystem
 
             var pkg = Packages.PackageSystem.Instance;
             if (pkg != null) save.StoredPackages = pkg.GetSaveData();
+            var delivery = Delivery.DeliverySystem.Instance;
+            if (delivery != null) save.PendingDeliveries = delivery.GetPendingDeliveryData();
+
+            foreach (var marker in FindObjectsOfType<PlacedObjectMarker>())
+            {
+                if (marker == null || string.IsNullOrEmpty(marker.ItemId)) continue;
+                save.PlacedObjects.Add(new PlacedObjectEntry
+                {
+                    ItemId = marker.ItemId,
+                    Position = marker.transform.position,
+                    EulerAngles = marker.transform.eulerAngles
+                });
+            }
+
+            foreach (var box in FindObjectsOfType<Delivery.DeliveryBox>())
+            {
+                if (box == null) continue;
+                save.SpawnedDeliveryBoxes.Add(new DeliveryBoxEntry
+                {
+                    Position = box.transform.position,
+                    Contents = box.GetContentsSnapshot()
+                });
+            }
 
             foreach (var p in Core.DefaultGameData.Products)
                 save.Prices.Add(new PriceEntry { ProductId = p.Id, SellPrice = p.SellPrice });
@@ -140,10 +200,32 @@ namespace Kiosk.SaveSystem
             var up = Upgrades.UpgradeManager.Instance;
             if (up != null) up.LoadPurchased(save.PurchasedUpgrades);
 
+            if (Core.SceneBootstrapper.Instance != null)
+            {
+                foreach (var existing in FindObjectsOfType<PlacedObjectMarker>())
+                    if (existing != null)
+                    {
+                        existing.gameObject.SetActive(false);
+                        Destroy(existing.gameObject);
+                    }
+                if (save.PlacedObjects != null)
+                {
+                    foreach (var entry in save.PlacedObjects)
+                    {
+                        if (entry == null || string.IsNullOrEmpty(entry.ItemId)) continue;
+                        Core.SceneBootstrapper.Instance.CreatePlaceableObject(
+                            entry.ItemId,
+                            entry.Position,
+                            Quaternion.Euler(entry.EulerAngles),
+                            true);
+                    }
+                }
+            }
+
             foreach (var e in save.ShelfStock)
             {
-                if (e.ShelfIndex < 0 || e.ShelfIndex >= Shelf.AllShelves.Count) continue;
-                var shelf = Shelf.AllShelves[e.ShelfIndex];
+                var shelf = ResolveShelf(e);
+                if (shelf == null) continue;
                 if (e.SlotIndex < 0 || e.SlotIndex >= shelf.Slots.Count) continue;
                 var product = Core.DefaultGameData.GetProduct(e.ProductId);
                 if (product != null) shelf.Slots[e.SlotIndex].SetState(product, e.Count);
@@ -151,6 +233,21 @@ namespace Kiosk.SaveSystem
 
             var pkg = Packages.PackageSystem.Instance;
             if (pkg != null) pkg.LoadPackages(save.StoredPackages);
+            var delivery = Delivery.DeliverySystem.Instance;
+            if (delivery != null) delivery.LoadPendingDeliveries(save.PendingDeliveries);
+            foreach (var existingBox in FindObjectsOfType<Delivery.DeliveryBox>())
+                if (existingBox != null) Destroy(existingBox.gameObject);
+            int restoredBoxCount = 0;
+            if (save.SpawnedDeliveryBoxes != null)
+                foreach (var entry in save.SpawnedDeliveryBoxes)
+                {
+                    var go = Core.ProceduralAssetGenerator.CreateDeliveryBoxModel();
+                    go.transform.position = entry.Position;
+                    var box = go.AddComponent<Delivery.DeliveryBox>();
+                    box.SetContents(entry.Contents);
+                    restoredBoxCount++;
+                }
+            if (delivery != null) delivery.RestoreSpawnedBoxCount(restoredBoxCount);
 
             if (save.Prices != null)
                 foreach (var e in save.Prices)
@@ -168,6 +265,30 @@ namespace Kiosk.SaveSystem
         public void MarkTutorialCompleted()
         {
             TutorialCompleted = true;
+        }
+
+        Shelf ResolveShelf(ShelfSlotEntry entry)
+        {
+            if (entry == null) return null;
+
+            Shelf bestMatch = null;
+            float bestDistance = float.MaxValue;
+            foreach (var shelf in Shelf.AllShelves)
+            {
+                if (shelf == null) continue;
+                float distance = Vector3.Distance(shelf.transform.position, entry.ShelfPosition);
+                if (!string.IsNullOrEmpty(entry.ShelfName) && shelf.name == entry.ShelfName && distance < ShelfExactMatchDistance)
+                    return shelf;
+                if (distance < bestDistance)
+                {
+                    bestDistance = distance;
+                    bestMatch = shelf;
+                }
+            }
+
+            if (bestMatch != null && bestDistance < ShelfFallbackMatchDistance) return bestMatch;
+            if (entry.ShelfIndex >= 0 && entry.ShelfIndex < Shelf.AllShelves.Count) return Shelf.AllShelves[entry.ShelfIndex];
+            return null;
         }
     }
 }

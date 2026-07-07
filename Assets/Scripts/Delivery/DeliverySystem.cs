@@ -4,6 +4,13 @@ using Kiosk.Orders;
 
 namespace Kiosk.Delivery
 {
+    [System.Serializable]
+    public class PendingDeliverySaveData
+    {
+        public List<OrderLine> Lines = new List<OrderLine>();
+        public float Timer;
+    }
+
     class PendingDelivery
     {
         public List<OrderLine> Lines;
@@ -15,12 +22,19 @@ namespace Kiosk.Delivery
     /// </summary>
     public class DeliverySystem : MonoBehaviour
     {
+        // Geladene Lieferungen sollten nie sofort im gleichen Frame eintreffen.
+        const float MinLoadedDeliveryTimer = 0.1f;
+        // Fallback, falls im Save keine gueltige Restzeit mehr vorhanden ist.
+        const float DefaultLoadedDeliveryTimer = 1f;
+
         public static DeliverySystem Instance { get; private set; }
 
         public Vector3 DeliveryDropPoint;
 
         readonly List<PendingDelivery> _pending = new List<PendingDelivery>();
         int _boxOffset;
+
+        public event System.EventHandler PendingDeliveriesChanged;
 
         void Awake()
         {
@@ -37,6 +51,7 @@ namespace Kiosk.Delivery
                 Lines = new List<OrderLine>(lines),
                 Timer = timeSeconds
             });
+            NotifyPendingChanged();
         }
 
         void Update()
@@ -49,6 +64,7 @@ namespace Kiosk.Delivery
                 {
                     SpawnBoxes(_pending[i].Lines);
                     _pending.RemoveAt(i);
+                    NotifyPendingChanged();
                     if (UI.UIManager.Instance != null)
                         UI.UIManager.Instance.ShowToast("Lieferung angekommen! Kartons am Eingang.");
                     if (Audio.AudioManager.Instance != null)
@@ -90,6 +106,46 @@ namespace Kiosk.Delivery
             _boxOffset++;
             var box = go.AddComponent<DeliveryBox>();
             box.SetContents(lines);
+        }
+
+        public List<PendingDeliverySaveData> GetPendingDeliveryData()
+        {
+            var data = new List<PendingDeliverySaveData>();
+            foreach (var pending in _pending)
+                data.Add(new PendingDeliverySaveData
+                {
+                    Lines = new List<OrderLine>(pending.Lines),
+                    Timer = pending.Timer
+                });
+            return data;
+        }
+
+        public void LoadPendingDeliveries(List<PendingDeliverySaveData> deliveries)
+        {
+            _pending.Clear();
+            if (deliveries != null)
+                foreach (var delivery in deliveries)
+                    _pending.Add(new PendingDelivery
+                    {
+                        Lines = delivery != null && delivery.Lines != null ? new List<OrderLine>(delivery.Lines) : new List<OrderLine>(),
+                        Timer = delivery != null ? Mathf.Max(MinLoadedDeliveryTimer, delivery.Timer) : DefaultLoadedDeliveryTimer
+                    });
+            NotifyPendingChanged();
+        }
+
+        public List<PendingDeliverySaveData> GetPendingSnapshot()
+        {
+            return GetPendingDeliveryData();
+        }
+
+        public void RestoreSpawnedBoxCount(int count)
+        {
+            _boxOffset = Mathf.Max(_boxOffset, Mathf.Max(0, count));
+        }
+
+        void NotifyPendingChanged()
+        {
+            if (PendingDeliveriesChanged != null) PendingDeliveriesChanged(this, System.EventArgs.Empty);
         }
     }
 }
