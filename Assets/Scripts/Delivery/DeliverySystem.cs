@@ -22,6 +22,9 @@ namespace Kiosk.Delivery
     /// </summary>
     public class DeliverySystem : MonoBehaviour
     {
+        const float MinLoadedDeliveryTimer = 0.1f;
+        const float DefaultLoadedDeliveryTimer = 1f;
+
         public static DeliverySystem Instance { get; private set; }
 
         public Vector3 DeliveryDropPoint;
@@ -123,7 +126,7 @@ namespace Kiosk.Delivery
                     _pending.Add(new PendingDelivery
                     {
                         Lines = delivery != null && delivery.Lines != null ? new List<OrderLine>(delivery.Lines) : new List<OrderLine>(),
-                        Timer = delivery != null ? Mathf.Max(0.1f, delivery.Timer) : 1f
+                        Timer = delivery != null ? Mathf.Max(MinLoadedDeliveryTimer, delivery.Timer) : DefaultLoadedDeliveryTimer
                     });
             NotifyPendingChanged();
         }

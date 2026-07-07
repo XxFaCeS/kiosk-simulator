@@ -20,22 +20,26 @@ namespace Kiosk.Placement
     /// </summary>
     public class PlacementSystem : MonoBehaviour
     {
+        const float PlacementHorizontalTolerance = 0.95f;
+        const float MinPlacementVerticalExtent = 0.08f;
+        const float PlacementVerticalInset = 0.04f;
+
         public static PlacementSystem Instance { get; private set; }
 
         static readonly List<PlacementItemDefinition> Catalog = new List<PlacementItemDefinition>
         {
-            new PlacementItemDefinition { Id = "shelf_standard", DisplayName = "Standardregal", Description = "2x2 Fächer für Basisware.", Category = PlacementCategory.Shelf, Cost = 120f },
-            new PlacementItemDefinition { Id = "shelf_wide", DisplayName = "Breites Regal", Description = "3x2 Fächer für viel Laufkundschaft.", Category = PlacementCategory.Shelf, Cost = 180f },
-            new PlacementItemDefinition { Id = "shelf_fridge", DisplayName = "Kühlregal", Description = "Gekühltes Regal für Getränke und Frische.", Category = PlacementCategory.Shelf, Cost = 240f },
+            new PlacementItemDefinition { Id = "shelf_standard", DisplayName = "Standardregal", Description = "2x2 Faecher fuer Basisware.", Category = PlacementCategory.Shelf, Cost = 120f },
+            new PlacementItemDefinition { Id = "shelf_wide", DisplayName = "Breites Regal", Description = "3x2 Faecher fuer viel Laufkundschaft.", Category = PlacementCategory.Shelf, Cost = 180f },
+            new PlacementItemDefinition { Id = "shelf_fridge", DisplayName = "Kuehlregal", Description = "Gekuehltes Regal fuer Getraenke und Frische.", Category = PlacementCategory.Shelf, Cost = 240f },
             new PlacementItemDefinition { Id = "shelf_tobacco", DisplayName = "Tabakschrank", Description = "Abgeschlossenes Spezialregal fuer 18+-Ware.", Category = PlacementCategory.Shelf, Cost = 260f },
             new PlacementItemDefinition { Id = "accessory_register", DisplayName = "Zweitkasse", Description = "Sichtbare Zusatzkasse als Ausbau der Theke.", Category = PlacementCategory.Accessory, Cost = 140f },
-            new PlacementItemDefinition { Id = "accessory_baskets", DisplayName = "Einkaufskörbe", Description = "Körbe für Kunden im Eingangsbereich.", Category = PlacementCategory.Accessory, Cost = 55f },
-            new PlacementItemDefinition { Id = "accessory_counter", DisplayName = "Bessere Theke", Description = "Dekoratives Theken-Modul mit mehr Stellfläche.", Category = PlacementCategory.Accessory, Cost = 160f },
-            new PlacementItemDefinition { Id = "accessory_storage_box", DisplayName = "Lagerboxen", Description = "Zusätzliche sichtbare Lagerkisten.", Category = PlacementCategory.Accessory, Cost = 70f },
+            new PlacementItemDefinition { Id = "accessory_baskets", DisplayName = "Einkaufskoerbe", Description = "Koerbe fuer Kunden im Eingangsbereich.", Category = PlacementCategory.Accessory, Cost = 55f },
+            new PlacementItemDefinition { Id = "accessory_counter", DisplayName = "Bessere Theke", Description = "Dekoratives Theken-Modul mit mehr Stellflaeche.", Category = PlacementCategory.Accessory, Cost = 160f },
+            new PlacementItemDefinition { Id = "accessory_storage_box", DisplayName = "Lagerboxen", Description = "Zusaetzliche sichtbare Lagerkisten.", Category = PlacementCategory.Accessory, Cost = 70f },
             new PlacementItemDefinition { Id = "accessory_signs", DisplayName = "Preisschilder", Description = "Kleine Schilder fuer Regale und Aktionen.", Category = PlacementCategory.Accessory, Cost = 35f },
-            new PlacementItemDefinition { Id = "accessory_lamp", DisplayName = "Lampe", Description = "Warme Verkaufsflächen-Beleuchtung.", Category = PlacementCategory.Accessory, Cost = 90f },
+            new PlacementItemDefinition { Id = "accessory_lamp", DisplayName = "Lampe", Description = "Warme Verkaufsflaechen-Beleuchtung.", Category = PlacementCategory.Accessory, Cost = 90f },
             new PlacementItemDefinition { Id = "accessory_ad_sign", DisplayName = "Werbeschild", Description = "Sichtbares Werbeschild fuer den Laden.", Category = PlacementCategory.Accessory, Cost = 85f },
-            new PlacementItemDefinition { Id = "accessory_decor", DisplayName = "Dekoration", Description = "Pflanze und Deko für mehr Atmosphäre.", Category = PlacementCategory.Accessory, Cost = 45f }
+            new PlacementItemDefinition { Id = "accessory_decor", DisplayName = "Dekoration", Description = "Pflanze und Deko fuer mehr Atmosphaere.", Category = PlacementCategory.Accessory, Cost = 45f }
         };
 
         public bool IsPlacing { get { return _previewRoot != null && _activeDefinition != null; } }
@@ -250,7 +254,10 @@ namespace Kiosk.Placement
         bool EvaluatePlacementValidity(Vector3 position, Quaternion rotation)
         {
             Vector3 center = position + Vector3.up * (_previewExtents.y + 0.02f);
-            Vector3 extents = new Vector3(_previewExtents.x * 0.95f, Mathf.Max(0.08f, _previewExtents.y - 0.04f), _previewExtents.z * 0.95f);
+            Vector3 extents = new Vector3(
+                _previewExtents.x * PlacementHorizontalTolerance,
+                Mathf.Max(MinPlacementVerticalExtent, _previewExtents.y - PlacementVerticalInset),
+                _previewExtents.z * PlacementHorizontalTolerance);
             var hits = Physics.OverlapBox(center, extents, rotation, ~0, QueryTriggerInteraction.Ignore);
             foreach (var hit in hits)
             {

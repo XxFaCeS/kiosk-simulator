@@ -11,6 +11,9 @@ namespace Kiosk.Checkout
     /// </summary>
     public class CheckoutCounter : Interactable
     {
+        const float CounterItemsZStart = -0.65f;
+        const float CounterItemsZRange = 1.3f;
+
         class CounterItemVisual
         {
             public ProductData Product;
@@ -92,15 +95,14 @@ namespace Kiosk.Checkout
             _displayCustomer = customer;
 
             int count = Mathf.Max(1, customer.Basket.Count);
-            float zStart = -0.65f;
-            float zStep = count > 1 ? 1.3f / Mathf.Max(1, count - 1) : 0f;
+            float zStep = count > 1 ? CounterItemsZRange / Mathf.Max(1, count - 1) : 0f;
             for (int i = 0; i < customer.Basket.Count; i++)
             {
                 var product = customer.Basket[i];
                 var go = Core.ProceduralAssetGenerator.CreateProductModel(product);
                 go.transform.SetParent(_itemsRoot, false);
                 go.transform.localRotation = Quaternion.identity;
-                var localPos = new Vector3(-0.18f, 0.52f, zStart + zStep * i);
+                var localPos = new Vector3(-0.18f, 0.52f, CounterItemsZStart + zStep * i);
                 go.transform.localPosition = localPos;
                 _counterItems.Add(new CounterItemVisual
                 {

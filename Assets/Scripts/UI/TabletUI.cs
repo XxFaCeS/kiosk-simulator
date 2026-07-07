@@ -15,6 +15,13 @@ namespace Kiosk.UI
     /// </summary>
     public class TabletUI : MonoBehaviour
     {
+        const int PageProducts = 0;
+        const int PageShelves = 1;
+        const int PageAccessories = 2;
+        const int PageUpgrades = 3;
+        const int PageDeliveries = 4;
+        const int PageStorage = 5;
+
         public bool IsOpen { get; private set; }
 
         GameObject _root;
@@ -64,12 +71,12 @@ namespace Kiosk.UI
             tabLayout.spacing = 6f;
             tabLayout.childForceExpandWidth = true;
             tabLayout.childForceExpandHeight = true;
-            AddTabButton(tabBar.transform, "TabBestellung", "Produkte", 0);
-            AddTabButton(tabBar.transform, "TabRegale", "Regale", 1);
-            AddTabButton(tabBar.transform, "TabZubehoer", "Zubehoer", 2);
-            AddTabButton(tabBar.transform, "TabUpgrades", "Upgrades", 3);
-            AddTabButton(tabBar.transform, "TabLieferungen", "Lieferstatus", 4);
-            AddTabButton(tabBar.transform, "TabLager", "Lager", 5);
+            AddTabButton(tabBar.transform, "TabBestellung", "Produkte", PageProducts);
+            AddTabButton(tabBar.transform, "TabRegale", "Regale", PageShelves);
+            AddTabButton(tabBar.transform, "TabZubehoer", "Zubehoer", PageAccessories);
+            AddTabButton(tabBar.transform, "TabUpgrades", "Upgrades", PageUpgrades);
+            AddTabButton(tabBar.transform, "TabLieferungen", "Lieferstatus", PageDeliveries);
+            AddTabButton(tabBar.transform, "TabLager", "Lager", PageStorage);
             ProceduralAssetGenerator.CreateButton(tabBar.transform, "TabSchliessen", "Schliessen [Tab]", delegate { UIManager.Instance.ToggleTablet(); });
 
             var content = ProceduralAssetGenerator.CreatePanel(_root.transform, "Inhalt",
@@ -161,7 +168,7 @@ namespace Kiosk.UI
             if (IsOpen) return;
             IsOpen = true;
             _root.SetActive(true);
-            ShowPage(0);
+            ShowPage(PageProducts);
             StartAnimation(true);
         }
 
@@ -179,7 +186,8 @@ namespace Kiosk.UI
             _refreshTimer -= Time.unscaledDeltaTime;
             if (_refreshTimer <= 0f)
             {
-                if (_currentPage == 0 || _currentPage == 3 || _currentPage == 4 || _currentPage == 5)
+                if (_currentPage == PageProducts || _currentPage == PageUpgrades
+                    || _currentPage == PageDeliveries || _currentPage == PageStorage)
                     RefreshActivePage();
                 _refreshTimer = 0.35f;
             }
@@ -205,6 +213,7 @@ namespace Kiosk.UI
             {
                 elapsed += Time.unscaledDeltaTime;
                 float t = Mathf.Clamp01(elapsed / duration);
+                // Sanftes cubic ease-out fuer das Auf-/Zuklappen des Tablets.
                 t = 1f - Mathf.Pow(1f - t, 3f);
                 _rootRect.localScale = Vector3.Lerp(startScale, endScale, t);
                 _rootRect.anchoredPosition = Vector2.Lerp(startPos, endPos, t);
@@ -220,12 +229,12 @@ namespace Kiosk.UI
         void ShowPage(int page)
         {
             _currentPage = page;
-            _orderUI.gameObject.SetActive(page == 0);
-            _shelfPage.SetActive(page == 1);
-            _accessoryPage.SetActive(page == 2);
-            _upgradeUI.gameObject.SetActive(page == 3);
-            _deliveryPage.SetActive(page == 4);
-            _storagePage.SetActive(page == 5);
+            _orderUI.gameObject.SetActive(page == PageProducts);
+            _shelfPage.SetActive(page == PageShelves);
+            _accessoryPage.SetActive(page == PageAccessories);
+            _upgradeUI.gameObject.SetActive(page == PageUpgrades);
+            _deliveryPage.SetActive(page == PageDeliveries);
+            _storagePage.SetActive(page == PageStorage);
             RefreshActivePage();
         }
 
@@ -233,12 +242,12 @@ namespace Kiosk.UI
         {
             switch (_currentPage)
             {
-                case 0: _orderUI.Refresh(); break;
-                case 1: RefreshShopPage(PlacementCategory.Shelf); break;
-                case 2: RefreshShopPage(PlacementCategory.Accessory); break;
-                case 3: _upgradeUI.Refresh(); break;
-                case 4: RefreshDeliveryStatus(); break;
-                case 5: RefreshStorage(); break;
+                case PageProducts: _orderUI.Refresh(); break;
+                case PageShelves: RefreshShopPage(PlacementCategory.Shelf); break;
+                case PageAccessories: RefreshShopPage(PlacementCategory.Accessory); break;
+                case PageUpgrades: _upgradeUI.Refresh(); break;
+                case PageDeliveries: RefreshDeliveryStatus(); break;
+                case PageStorage: RefreshStorage(); break;
             }
         }
 

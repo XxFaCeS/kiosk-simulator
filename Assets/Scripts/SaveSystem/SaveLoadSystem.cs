@@ -66,6 +66,9 @@ namespace Kiosk.SaveSystem
     /// </summary>
     public class SaveLoadSystem : MonoBehaviour
     {
+        const float ShelfExactMatchDistance = 0.05f;
+        const float ShelfFallbackMatchDistance = 0.35f;
+
         public static SaveLoadSystem Instance { get; private set; }
         public bool TutorialCompleted { get; private set; }
 
@@ -274,7 +277,7 @@ namespace Kiosk.SaveSystem
             {
                 if (shelf == null) continue;
                 float distance = Vector3.Distance(shelf.transform.position, entry.ShelfPosition);
-                if (!string.IsNullOrEmpty(entry.ShelfName) && shelf.name == entry.ShelfName && distance < 0.05f)
+                if (!string.IsNullOrEmpty(entry.ShelfName) && shelf.name == entry.ShelfName && distance < ShelfExactMatchDistance)
                     return shelf;
                 if (distance < bestDistance)
                 {
@@ -283,7 +286,7 @@ namespace Kiosk.SaveSystem
                 }
             }
 
-            if (bestMatch != null && bestDistance < 0.35f) return bestMatch;
+            if (bestMatch != null && bestDistance < ShelfFallbackMatchDistance) return bestMatch;
             if (entry.ShelfIndex >= 0 && entry.ShelfIndex < Shelf.AllShelves.Count) return Shelf.AllShelves[entry.ShelfIndex];
             return null;
         }
