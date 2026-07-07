@@ -261,8 +261,8 @@ namespace Kiosk.UI
 
             var items = PlacementSystem.GetCatalog(category);
             intro.text = category == PlacementCategory.Shelf
-                ? "Regale werden nach dem Kauf als Ghost-Vorschau auf dem Boden platziert. Linksklick bestaetigt, Rechtsklick/Escape storniert mit Rueckerstattung."
-                : "Zubehoer ist sichtbarer Ladenausbau. Kaufe ein Objekt und platziere es direkt im Laden.";
+                ? "Regale werden nach dem Kauf als Ghost-Vorschau auf dem Boden platziert. Linksklick bestätigt, Rechtsklick/Escape storniert mit Rückerstattung."
+                : "Zubehör ist sichtbarer Ladenausbau. Kaufe ein Objekt und platziere es direkt im Laden.";
 
             foreach (var item in items)
             {
@@ -280,7 +280,7 @@ namespace Kiosk.UI
                 labelLayout.flexibleWidth = 3f;
 
                 var captured = item;
-                ProceduralAssetGenerator.CreateButton(row.transform, "Kaufen", "Kaufen + platzieren", delegate { StartPlacement(captured); });
+                ProceduralAssetGenerator.CreateButton(row.transform, "Kaufen", "Kaufen + Platzieren", delegate { StartPlacement(captured); });
             }
         }
 

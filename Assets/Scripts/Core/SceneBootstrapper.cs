@@ -228,7 +228,7 @@ namespace Kiosk.Core
                     root = CreateShelf("Breitregal", position, rotation, false, false, 3, 2, 2.3f).gameObject;
                     break;
                 case "shelf_fridge":
-                    root = CreateShelf("Kuehlregal", position, rotation, true, false, 2, 2, 1.7f).gameObject;
+                    root = CreateShelf("Kühlregal", position, rotation, true, false, 2, 2, 1.7f).gameObject;
                     break;
                 case "shelf_tobacco":
                     root = CreateShelf("Tabakschrank", position, rotation, false, true, 2, 2, 1.4f).gameObject;
@@ -240,7 +240,7 @@ namespace Kiosk.Core
                     AttachChild(root.transform, PrimitiveType.Cube, "Kasse", new Vector3(0f, 1.15f, 0f), new Vector3(0.4f, 0.3f, 0.4f), "Material_Kasse");
                     break;
                 case "accessory_baskets":
-                    root = CreateAccessoryRoot("Einkaufskoerbe", position, rotation);
+                    root = CreateAccessoryRoot("Einkaufskörbe", position, rotation);
                     for (int i = 0; i < 3; i++)
                         AttachChild(root.transform, PrimitiveType.Cube, "Korb_" + i, new Vector3(-0.22f + i * 0.22f, 0.16f, 0f), new Vector3(0.18f, 0.12f, 0.18f), "Material_LottoTerminal");
                     AttachChild(root.transform, PrimitiveType.Cube, "Unterlage", new Vector3(0f, 0.04f, 0f), new Vector3(0.85f, 0.08f, 0.45f), "Material_Theke");
