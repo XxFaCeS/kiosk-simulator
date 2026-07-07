@@ -66,6 +66,8 @@ namespace Kiosk.Core
         {
             Cursor.lockState = uiOpen ? CursorLockMode.None : CursorLockMode.Locked;
             Cursor.visible = uiOpen;
+            var player = FindObjectOfType<Player.PlayerController>();
+            if (player != null) player.InputLocked = uiOpen;
         }
     }
 }

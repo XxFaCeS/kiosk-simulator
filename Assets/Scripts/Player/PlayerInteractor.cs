@@ -25,9 +25,15 @@ namespace Kiosk.Player
         {
             var gm = Core.GameManager.Instance;
             var ui = UI.UIManager.Instance;
+            var placement = Placement.PlacementSystem.Instance;
 
             if (Input.GetKeyDown(KeyCode.Escape))
             {
+                if (placement != null && placement.IsPlacing)
+                {
+                    placement.CancelPlacement(true);
+                    return;
+                }
                 if (ui != null) ui.TogglePauseOrCloseWindow();
                 return;
             }
@@ -35,11 +41,12 @@ namespace Kiosk.Player
 
             if (Input.GetKeyDown(KeyCode.Tab))
             {
+                if (placement != null && placement.IsPlacing) return;
                 if (ui != null) ui.ToggleTablet();
                 return;
             }
 
-            if (ui != null && ui.AnyWindowOpen)
+            if ((ui != null && ui.AnyWindowOpen) || (placement != null && placement.IsPlacing))
             {
                 ClearCurrent();
                 return;
