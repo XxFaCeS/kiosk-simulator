@@ -22,7 +22,9 @@ namespace Kiosk.Delivery
     /// </summary>
     public class DeliverySystem : MonoBehaviour
     {
+        // Geladene Lieferungen sollten nie sofort im gleichen Frame eintreffen.
         const float MinLoadedDeliveryTimer = 0.1f;
+        // Fallback, falls im Save keine gueltige Restzeit mehr vorhanden ist.
         const float DefaultLoadedDeliveryTimer = 1f;
 
         public static DeliverySystem Instance { get; private set; }
@@ -32,7 +34,7 @@ namespace Kiosk.Delivery
         readonly List<PendingDelivery> _pending = new List<PendingDelivery>();
         int _boxOffset;
 
-        public event System.Action OnPendingDeliveriesChanged;
+        public event System.EventHandler PendingDeliveriesChanged;
 
         void Awake()
         {
@@ -143,7 +145,7 @@ namespace Kiosk.Delivery
 
         void NotifyPendingChanged()
         {
-            if (OnPendingDeliveriesChanged != null) OnPendingDeliveriesChanged();
+            if (PendingDeliveriesChanged != null) PendingDeliveriesChanged(this, System.EventArgs.Empty);
         }
     }
 }

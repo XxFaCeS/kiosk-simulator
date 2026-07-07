@@ -94,7 +94,7 @@ namespace Kiosk.Checkout
             EnsureVisualRoots();
             _displayCustomer = customer;
 
-            int count = Mathf.Max(1, customer.Basket.Count);
+            int count = customer.Basket.Count;
             float zStep = count > 1 ? CounterItemsZRange / Mathf.Max(1, count - 1) : 0f;
             for (int i = 0; i < customer.Basket.Count; i++)
             {

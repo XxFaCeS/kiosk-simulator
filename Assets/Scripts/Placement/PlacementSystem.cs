@@ -20,6 +20,8 @@ namespace Kiosk.Placement
     /// </summary>
     public class PlacementSystem : MonoBehaviour
     {
+        // Kleiner Sicherheitsabstand fuer den Overlap-Check, damit Ghosts nicht
+        // an Boden/Tiny-Meshes haengen bleiben, aber echte Ueberschneidungen blockieren.
         const float PlacementHorizontalTolerance = 0.95f;
         const float MinPlacementVerticalExtent = 0.08f;
         const float PlacementVerticalInset = 0.04f;
